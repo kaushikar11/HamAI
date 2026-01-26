@@ -167,11 +167,14 @@ const Dashboard = () => {
 
   // Initialize selected categories when chart data changes (all selected by default)
   useEffect(() => {
-    if (categoryChartData.length > 0 && selectedCategories.size === 0) {
-      const allCategories = new Set(categoryChartData.map(cat => cat.originalName));
-      setSelectedCategories(allCategories);
+    if (categoryChartData.length > 0) {
+      const allCategoryNames = categoryChartData.map(cat => cat.originalName);
+      // Always initialize all categories when data changes (new month/year)
+      setSelectedCategories(new Set(allCategoryNames));
+    } else {
+      setSelectedCategories(new Set());
     }
-  }, [categoryChartData, selectedCategories.size]);
+  }, [categoryChartData]);
 
   // Filter chart data based on selected categories
   const filteredChartData = useMemo(() => {
