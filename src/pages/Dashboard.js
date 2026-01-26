@@ -7,7 +7,7 @@ import { auth } from '../firebase';
 import { 
   Plus, LogOut, DollarSign, Calendar, Tag, Trash2, Edit2, 
   ChevronLeft, ChevronRight, Filter, PieChart,
-  Search
+  Search, TrendingUp
 } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 import {
@@ -592,8 +592,6 @@ const Dashboard = () => {
                     </div>
                   </div>
                 )}
-
-              </div>
 
                   {/* Inline Editable Lists - Only in Analytics tab */}
                   <div className="editable-lists-section">
