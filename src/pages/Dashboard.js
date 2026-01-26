@@ -7,13 +7,13 @@ import { auth } from '../firebase';
 import { 
   Plus, LogOut, DollarSign, Calendar, Tag, Trash2, Edit2, 
   ChevronLeft, ChevronRight, Filter, TrendingUp, PieChart,
-  BarChart3
+  BarChart3, Search
 } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 import {
   BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, AreaChart, Area
+  ResponsiveContainer
 } from 'recharts';
 import './Dashboard.css';
 
@@ -38,6 +38,7 @@ const Dashboard = () => {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [categories, setCategories] = useState([]);
   const [receivers, setReceivers] = useState([]);
   const [editingItem, setEditingItem] = useState(null); // { type: 'category'|'receiver', oldValue: string, newValue: string }
@@ -162,18 +163,6 @@ const Dashboard = () => {
     })).sort((a, b) => b.value - a.value);
   }, [stats]);
 
-  const dailySpendingData = useMemo(() => {
-    if (!entries.length) return [];
-    const daily = {};
-    entries.forEach(entry => {
-      const date = new Date(entry.date || entry.createdAt);
-      const day = date.getDate();
-      daily[day] = (daily[day] || 0) + (entry.total || 0);
-    });
-    return Object.entries(daily)
-      .map(([day, total]) => ({ day: parseInt(day), total: parseFloat(total.toFixed(2)) }))
-      .sort((a, b) => a.day - b.day);
-  }, [entries]);
 
   const getCategoryColor = (category) => {
     const c = (category || 'other').toLowerCase();
@@ -212,15 +201,17 @@ const Dashboard = () => {
       <nav className="dashboard-nav">
         <div className="nav-content">
           <div className="nav-brand">
-            <img 
-              src="/hamai-logo.png" 
-              alt="HamAI Logo" 
-              className="nav-logo"
-              onError={(e) => {
-                e.target.style.display = 'none';
-              }}
-            />
-            <h1 className="nav-title">HamAI</h1>
+            <a href="https://hamai.vercel.app" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', color: 'inherit' }}>
+              <img 
+                src="/hamai-logo.png" 
+                alt="HamAI Logo" 
+                className="nav-logo"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                }}
+              />
+              <h1 className="nav-title">HamAI</h1>
+            </a>
           </div>
           <div className="nav-actions">
             <div className="nav-user">
@@ -356,6 +347,16 @@ const Dashboard = () => {
                     >
                       <Plus size={18} /> Add transaction
                     </button>
+                    <div className="search-container">
+                      <Search size={18} className="search-icon" />
+                      <input
+                        type="text"
+                        className="search-input"
+                        placeholder="Search transactions..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
                   </div>
                   <div className="filter-controls">
                     <Filter size={18} />
@@ -375,9 +376,34 @@ const Dashboard = () => {
                 {/* Entries Table */}
                 {(() => {
                   // Filter entries by category
-                  const filteredEntries = categoryFilter === 'all' 
+                  let filteredEntries = categoryFilter === 'all' 
                     ? entries 
                     : entries.filter(e => e.category === categoryFilter);
+                  
+                  // Filter by search query (searches all metadata)
+                  if (searchQuery.trim()) {
+                    const query = searchQuery.toLowerCase().trim();
+                    filteredEntries = filteredEntries.filter(entry => {
+                      // Search in receiver/store
+                      const receiverMatch = (entry.receiver || entry.store || '').toLowerCase().includes(query);
+                      // Search in category
+                      const categoryMatch = (entry.category || '').toLowerCase().includes(query);
+                      // Search in items
+                      const itemsMatch = (entry.items || []).some(item => 
+                        (item.name || '').toLowerCase().includes(query) ||
+                        String(item.amount || '').includes(query)
+                      );
+                      // Search in notes
+                      const notesMatch = (entry.notes || '').toLowerCase().includes(query);
+                      // Search in amounts
+                      const amountMatch = 
+                        String(entry.subtotal || '').includes(query) ||
+                        String(entry.tax || '').includes(query) ||
+                        String(entry.total || '').includes(query);
+                      
+                      return receiverMatch || categoryMatch || itemsMatch || notesMatch || amountMatch;
+                    });
+                  }
                   
                   if (filteredEntries.length === 0) {
                     return (
@@ -478,15 +504,15 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="analytics-section">
-                <div className="charts-grid">
+                <div className="charts-grid-large">
                 {/* Category Pie Chart */}
                 {categoryChartData.length > 0 && (
-                  <div className="chart-card">
+                  <div className="chart-card-large">
                     <div className="chart-header">
                       <PieChart size={24} />
                       <h3>Spending by Category</h3>
                       </div>
-                    <ResponsiveContainer width="100%" height={300}>
+                    <ResponsiveContainer width="100%" height={400}>
                       <RechartsPieChart>
                         <Pie
                           data={categoryChartData}
@@ -494,7 +520,7 @@ const Dashboard = () => {
                           cy="50%"
                           labelLine={false}
                           label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                          outerRadius={100}
+                          outerRadius={140}
                           fill="#8884d8"
                           dataKey="value"
                         >
@@ -510,12 +536,12 @@ const Dashboard = () => {
 
                 {/* Category Bar Chart */}
                 {categoryChartData.length > 0 && (
-                  <div className="chart-card">
+                  <div className="chart-card-large">
                     <div className="chart-header">
                       <BarChart3 size={24} />
                       <h3>Category Comparison</h3>
                     </div>
-                    <ResponsiveContainer width="100%" height={300}>
+                    <ResponsiveContainer width="100%" height={400}>
                       <BarChart data={categoryChartData}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="name" />
@@ -531,30 +557,6 @@ const Dashboard = () => {
                   </div>
                 )}
 
-                {/* Daily Spending Line Chart */}
-                {dailySpendingData.length > 0 && (
-                  <div className="chart-card full-width">
-                    <div className="chart-header">
-                      <TrendingUp size={24} />
-                      <h3>Daily Spending Trend</h3>
-                    </div>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <AreaChart data={dailySpendingData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="day" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
-                        <Area 
-                          type="monotone" 
-                          dataKey="total" 
-                          stroke="#ff69b4" 
-                          fill="#ffb6c1"
-                          fillOpacity={0.6}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
               </div>
 
                   {/* Inline Editable Lists - Only in Analytics tab */}
