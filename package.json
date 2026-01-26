@@ -13,8 +13,8 @@
     "recharts": "^3.7.0"
   },
   "scripts": {
-    "prestart": "node ../backend/sync-env.cjs",
-    "prebuild": "node ../backend/sync-env.cjs",
+    "prestart": "node sync-env.cjs",
+    "prebuild": "node sync-env.cjs",
     "start": "BROWSER=none react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
