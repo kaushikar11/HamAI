@@ -455,9 +455,9 @@ const AddEntry = () => {
         </div>
 
         <div className="entry-two-column">
-          {/* Left: Auto-entry feature */}
+          {/* Left: Auto-entry */}
           <div className="ai-entry-card">
-            <h2>Auto-entry feature</h2>
+            <h2>Auto-entry</h2>
             <p className="subtitle">Paste a receipt or transaction text to auto-fill</p>
             <div className="ai-textarea-container">
               <textarea

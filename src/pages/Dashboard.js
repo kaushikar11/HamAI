@@ -6,13 +6,13 @@ import toast from 'react-hot-toast';
 import { auth } from '../firebase';
 import { 
   Plus, LogOut, DollarSign, Calendar, Tag, Trash2, Edit2, 
-  ChevronLeft, ChevronRight, Filter, TrendingUp, PieChart,
-  BarChart3, Search
+  ChevronLeft, ChevronRight, Filter, PieChart,
+  Search
 } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 import {
-  BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip,
+  PieChart as RechartsPieChart, Pie, Cell,
+  Tooltip,
   ResponsiveContainer
 } from 'recharts';
 import './Dashboard.css';
@@ -48,6 +48,7 @@ const Dashboard = () => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null });
   const [detailsModal, setDetailsModal] = useState({ open: false, tx: null });
+  const [selectedCategories, setSelectedCategories] = useState(new Set());
 
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -159,9 +160,34 @@ const Dashboard = () => {
     if (!stats?.categoryTotals) return [];
     return Object.entries(stats.categoryTotals).map(([name, value]) => ({
       name: name.charAt(0).toUpperCase() + name.slice(1),
+      originalName: name.toLowerCase(), // Keep original for filtering
       value: parseFloat(value.toFixed(2))
     })).sort((a, b) => b.value - a.value);
   }, [stats]);
+
+  // Initialize selected categories when chart data changes (all selected by default)
+  useEffect(() => {
+    if (categoryChartData.length > 0 && selectedCategories.size === 0) {
+      const allCategories = new Set(categoryChartData.map(cat => cat.originalName));
+      setSelectedCategories(allCategories);
+    }
+  }, [categoryChartData, selectedCategories.size]);
+
+  // Filter chart data based on selected categories
+  const filteredChartData = useMemo(() => {
+    if (selectedCategories.size === 0) return categoryChartData;
+    return categoryChartData.filter(cat => selectedCategories.has(cat.originalName));
+  }, [categoryChartData, selectedCategories]);
+
+  const toggleCategory = (categoryName) => {
+    const newSelected = new Set(selectedCategories);
+    if (newSelected.has(categoryName)) {
+      newSelected.delete(categoryName);
+    } else {
+      newSelected.add(categoryName);
+    }
+    setSelectedCategories(newSelected);
+  };
 
 
   const getCategoryColor = (category) => {
@@ -504,56 +530,63 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="analytics-section">
-                <div className="charts-grid-large">
-                {/* Category Pie Chart */}
+                {/* Category Pie Chart with Filter */}
                 {categoryChartData.length > 0 && (
                   <div className="chart-card-large">
                     <div className="chart-header">
                       <PieChart size={24} />
                       <h3>Spending by Category</h3>
-                      </div>
-                    <ResponsiveContainer width="100%" height={400}>
-                      <RechartsPieChart>
-                        <Pie
-                          data={categoryChartData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                          outerRadius={140}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {categoryChartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={getCategoryColor(entry.name)} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
-                      </RechartsPieChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-
-                {/* Category Bar Chart */}
-                {categoryChartData.length > 0 && (
-                  <div className="chart-card-large">
-                    <div className="chart-header">
-                      <BarChart3 size={24} />
-                      <h3>Category Comparison</h3>
                     </div>
-                    <ResponsiveContainer width="100%" height={400}>
-                      <BarChart data={categoryChartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
-                        <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                          {categoryChartData.map((entry, index) => (
-                            <Cell key={`bar-${index}`} fill={getCategoryColor(entry.name)} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <div className="chart-content-wrapper">
+                      <div className="chart-checkboxes">
+                        {categoryChartData.map((cat) => (
+                          <label key={cat.originalName} className="category-checkbox-label">
+                            <input
+                              type="checkbox"
+                              checked={selectedCategories.has(cat.originalName)}
+                              onChange={() => toggleCategory(cat.originalName)}
+                              className="category-checkbox"
+                            />
+                            <span 
+                              className="category-checkbox-name"
+                              style={{ 
+                                color: getCategoryColor(cat.name),
+                                fontWeight: selectedCategories.has(cat.originalName) ? 600 : 400
+                              }}
+                            >
+                              {cat.name} (${cat.value.toFixed(2)})
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                      <div className="chart-container">
+                        {filteredChartData.length > 0 ? (
+                          <ResponsiveContainer width="100%" height={400}>
+                            <RechartsPieChart>
+                              <Pie
+                                data={filteredChartData}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                outerRadius={140}
+                                fill="#8884d8"
+                                dataKey="value"
+                              >
+                                {filteredChartData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={getCategoryColor(entry.name)} />
+                                ))}
+                              </Pie>
+                              <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
+                            </RechartsPieChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="chart-empty-state">
+                            <p>Select at least one category to display the chart</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
 
