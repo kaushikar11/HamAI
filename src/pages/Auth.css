@@ -1,0 +1,455 @@
+/* Auth Pages - Pink Theme with Split Layout */
+.auth-container {
+  min-height: 100vh;
+  display: flex;
+  background: var(--bg-primary);
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-container::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, var(--pink-lighter) 0%, transparent 70%);
+  opacity: 0.3;
+  animation: float 20s ease-in-out infinite;
+  z-index: 0;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate(30px, 30px) rotate(180deg);
+  }
+}
+
+/* Split Layout for Auth Pages */
+.auth-container.login-split {
+  flex-direction: row;
+}
+
+/* Ensure branding is always on left, form on right */
+.auth-branding {
+  order: 1;
+}
+
+.auth-form-wrapper {
+  order: 2;
+}
+
+/* Left Side - Branding */
+.auth-branding {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(135deg, rgba(255, 105, 180, 0.05) 0%, rgba(255, 20, 147, 0.05) 100%);
+  border-right: 1px solid var(--border-color);
+}
+
+.branding-content {
+  max-width: 500px;
+  width: 100%;
+  animation: slideInLeft 0.8s ease-out;
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.logo-container {
+  text-align: center;
+  margin-bottom: var(--spacing-xl);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.hamai-logo {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  margin-bottom: var(--spacing-md);
+  filter: drop-shadow(0 10px 30px var(--shadow-md));
+  animation: floatLogo 3s ease-in-out infinite;
+}
+
+@keyframes floatLogo {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.logo-fallback {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.logo-icon {
+  color: var(--pink-primary);
+  filter: drop-shadow(0 10px 30px var(--shadow-md));
+}
+
+.brand-title {
+  font-size: 3.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--pink-primary) 0%, var(--pink-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: var(--spacing-lg);
+  letter-spacing: -2px;
+  animation: gradientShift 3s ease infinite;
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    filter: hue-rotate(10deg);
+  }
+}
+
+.brand-features {
+  margin-bottom: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 15px var(--shadow-sm);
+  transition: all var(--transition-base);
+  animation: fadeInUp 0.8s ease-out backwards;
+}
+
+.feature-item:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.feature-item:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.feature-item:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.feature-item:hover {
+  transform: translateX(10px);
+  box-shadow: 0 6px 20px var(--shadow-md);
+  border-color: var(--pink-primary);
+}
+
+.feature-icon {
+  color: var(--pink-primary);
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+}
+
+.feature-item p {
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.brand-tagline {
+  text-align: center;
+  padding: var(--spacing-lg);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  animation: fadeInUp 0.8s ease-out 0.4s backwards;
+}
+
+.brand-tagline p {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  font-style: italic;
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Right Side - Form */
+.auth-form-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  position: relative;
+  z-index: 1;
+}
+
+.auth-card {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-xl);
+  width: 100%;
+  max-width: 450px;
+  box-shadow: 0 20px 60px var(--shadow-lg);
+  border: 1px solid var(--border-color);
+  position: relative;
+  animation: slideInRight 0.8s ease-out;
+}
+
+.auth-theme-toggle {
+  position: absolute;
+  top: var(--spacing-md);
+  right: var(--spacing-md);
+  z-index: 10;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: var(--spacing-xl);
+}
+
+.auth-icon {
+  color: var(--pink-primary);
+  margin-bottom: var(--spacing-md);
+  animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.auth-header h1 {
+  background: linear-gradient(135deg, var(--pink-primary) 0%, var(--pink-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 2.25rem;
+  margin-bottom: var(--spacing-xs);
+  font-weight: 700;
+}
+
+.auth-header p {
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.form-group label {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.form-group input {
+  padding: 14px 18px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  transition: all var(--transition-base);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--pink-primary);
+  box-shadow: 0 0 0 4px var(--shadow-sm);
+  transform: translateY(-2px);
+}
+
+.auth-button {
+  padding: 16px;
+  background: linear-gradient(135deg, var(--pink-primary) 0%, var(--pink-secondary) 100%);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  margin-top: var(--spacing-xs);
+  box-shadow: 0 4px 15px var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.auth-button:hover:not(:disabled)::before {
+  width: 300px;
+  height: 300px;
+}
+
+.auth-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px var(--shadow-lg);
+}
+
+.auth-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-footer {
+  text-align: center;
+  margin-top: var(--spacing-lg);
+  color: var(--text-secondary);
+}
+
+.auth-footer a {
+  color: var(--pink-primary);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color var(--transition-fast);
+}
+
+.auth-footer a:hover {
+  color: var(--pink-secondary);
+  text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 968px) {
+  .auth-container.login-split {
+    flex-direction: column;
+  }
+
+  .auth-branding {
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    padding: var(--spacing-lg);
+  }
+
+  .branding-content {
+    max-width: 100%;
+  }
+
+  .brand-title {
+    font-size: 2.5rem;
+  }
+
+  .hamai-logo {
+    width: 80px;
+    height: 80px;
+  }
+
+  .feature-item {
+    padding: var(--spacing-sm);
+  }
+
+  .feature-item p {
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .auth-branding {
+    padding: var(--spacing-md);
+  }
+
+  .brand-title {
+    font-size: 2rem;
+  }
+
+  .hamai-logo {
+    width: 60px;
+    height: 60px;
+  }
+
+  .brand-features {
+    gap: var(--spacing-sm);
+  }
+
+  .feature-item {
+    flex-direction: column;
+    text-align: center;
+    gap: var(--spacing-xs);
+  }
+
+  .auth-card {
+    padding: var(--spacing-lg);
+  }
+}
