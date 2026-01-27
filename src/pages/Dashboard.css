@@ -535,11 +535,12 @@
   gap: 5px;
   padding: 6px 14px;
   border-radius: 20px;
-  color: white;
+  color: white !important;
   font-size: 0.8rem;
   font-weight: 600;
   text-transform: capitalize;
   /* Background color is set inline via getCategoryColor() - no default background */
+  /* Inline styles will override any default background */
 }
 
 .entry-items {
@@ -939,16 +940,7 @@
   color: var(--text-secondary);
 }
 
-.category-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  background: rgba(100, 116, 139, 0.15);
-  color: var(--text-primary);
-}
+/* Removed duplicate category-badge - using the one at line 532 */
 
 /* Confirm modal */
 .confirm-overlay {
