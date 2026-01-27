@@ -535,12 +535,11 @@
   gap: 5px;
   padding: 6px 14px;
   border-radius: 20px;
-  color: white !important;
+  color: white;
   font-size: 0.8rem;
   font-weight: 600;
   text-transform: capitalize;
   /* Background color is set inline via getCategoryColor() - no default background */
-  /* Inline styles will override any default background */
 }
 
 .entry-items {
@@ -940,7 +939,16 @@
   color: var(--text-secondary);
 }
 
-/* Removed duplicate category-badge - using the one at line 532 */
+.category-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  background: rgba(100, 116, 139, 0.15);
+  color: var(--text-primary);
+}
 
 /* Confirm modal */
 .confirm-overlay {
@@ -1220,5 +1228,102 @@
   .entries-header {
     flex-direction: column;
     align-items: stretch;
+  }
+}
+
+/* Categories Section Styles */
+.categories-section {
+  padding: var(--spacing-lg);
+}
+
+.categories-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-xl);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.edit-section {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: 0 4px 20px var(--shadow-sm);
+  border: 1px solid var(--border-color);
+}
+
+.edit-section h3 {
+  color: var(--text-primary);
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0 0 var(--spacing-md) 0;
+  padding-bottom: var(--spacing-md);
+  border-bottom: 2px solid var(--border-color);
+}
+
+.editable-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.editable-list-item {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-base);
+}
+
+.editable-list-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.editable-text {
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-base);
+  width: 100%;
+}
+
+.editable-text:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.category-color-indicator {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 2px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.inline-edit-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 2px solid var(--pink-primary);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.inline-edit-input:focus {
+  border-color: var(--pink-primary);
+  box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1);
+}
+
+@media (max-width: 968px) {
+  .categories-content {
+    grid-template-columns: 1fr;
   }
 }

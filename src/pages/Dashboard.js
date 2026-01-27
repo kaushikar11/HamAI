@@ -22,11 +22,12 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // Month/Year state - default to August 2025 or from URL
+  // Month/Year state - default to current month (January 2026) or from URL
   const currentDate = new Date();
   const currentYear = currentDate.getFullYear();
-  const defaultMonth = 8; // August
-  const defaultYear = 2025; // Default year is 2025
+  const currentMonth = currentDate.getMonth() + 1; // 1-12
+  const defaultMonth = currentMonth; // Current month
+  const defaultYear = currentYear; // Current year
   
   const [selectedMonth, setSelectedMonth] = useState(
     parseInt(searchParams.get('month')) || defaultMonth
@@ -43,7 +44,7 @@ const Dashboard = () => {
   const [categories, setCategories] = useState([]);
   const [receivers, setReceivers] = useState([]);
   const [editingItem, setEditingItem] = useState(null); // { type: 'category'|'receiver', oldValue: string, newValue: string }
-  const [activeTab, setActiveTab] = useState('table'); // 'table' or 'analytics'
+  const [activeTab, setActiveTab] = useState('table'); // 'table', 'analytics', or 'categories'
   const { logout, user } = useContext(AuthContext);
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -71,6 +72,22 @@ const Dashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categories]); // Only depend on categories, not categoryColorMap
 
+  // Also ensure categories from entries have colors assigned
+  useEffect(() => {
+    if (entries.length > 0) {
+      const entryCategories = new Set();
+      entries.forEach(entry => {
+        if (entry.category) {
+          entryCategories.add(entry.category.toLowerCase());
+        }
+      });
+      if (entryCategories.size > 0) {
+        ensureCategoryColors(Array.from(entryCategories), setCategoryColorMap);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entries]);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -85,8 +102,24 @@ const Dashboard = () => {
       console.log('Entries count:', statsResponse.data?.entries?.length || 0);
 
       setStats(statsResponse.data);
-      setCategories(categoriesResponse.data.categories || []);
-      setReceivers(receiversResponse.data.receivers || []);
+      const fetchedCategories = categoriesResponse.data.categories || [];
+      const fetchedReceivers = receiversResponse.data.receivers || [];
+      setCategories(fetchedCategories);
+      setReceivers(fetchedReceivers);
+      
+      // Ensure all categories from entries also have colors
+      const entryCategories = new Set();
+      (statsResponse.data?.entries || []).forEach(entry => {
+        if (entry.category) {
+          entryCategories.add(entry.category.toLowerCase());
+        }
+      });
+      
+      // Merge entry categories with fetched categories
+      const allCategories = Array.from(new Set([...fetchedCategories.map(c => c.toLowerCase()), ...Array.from(entryCategories)]));
+      if (allCategories.length > 0) {
+        ensureCategoryColors(allCategories, setCategoryColorMap);
+      }
       
       // Filter entries by category if needed
       let filteredEntries = statsResponse.data.entries || [];
@@ -149,6 +182,7 @@ const Dashboard = () => {
     let newMonth = selectedMonth + direction;
     let newYear = selectedYear;
     
+    // Allow going backward from current month (no restriction)
     if (newMonth < 1) {
       newMonth = 12;
       newYear--;
@@ -156,6 +190,8 @@ const Dashboard = () => {
       newMonth = 1;
       newYear++;
     }
+    
+    // No restriction on going backward - allow any month/year
     
     // Allow any year, just update
     setSelectedMonth(newMonth);
@@ -201,9 +237,12 @@ const Dashboard = () => {
   };
 
   // Get category color (wrapper to pass state)
-  const getCategoryColor = (category) => {
-    return getCategoryColorUtil(category, categoryColorMap, setCategoryColorMap);
-  };
+  const getCategoryColor = useCallback((category) => {
+    if (!category) return '#64748b';
+    const color = getCategoryColorUtil(category, categoryColorMap, setCategoryColorMap);
+    // Ensure we always return a valid color
+    return color || '#64748b'; // Fallback to slate if somehow undefined
+  }, [categoryColorMap]);
 
   const displayName = (() => {
     const backendName = user?.name;
@@ -256,7 +295,6 @@ const Dashboard = () => {
           <button 
             className="month-nav-button"
             onClick={() => changeMonth(-1)}
-            disabled={selectedYear === 2026 && selectedMonth === 1}
           >
             <ChevronLeft size={20} />
           </button>
@@ -356,6 +394,12 @@ const Dashboard = () => {
                 onClick={() => setActiveTab('analytics')}
               >
                 Analytics and Insights
+              </button>
+              <button
+                className={`tab-button ${activeTab === 'categories' ? 'active' : ''}`}
+                onClick={() => setActiveTab('categories')}
+              >
+                Categories
               </button>
             </div>
 
@@ -468,7 +512,11 @@ const Dashboard = () => {
                             <td>
                               <span
                                 className="category-badge"
-                                style={{ backgroundColor: getCategoryColor(entry.category), color: 'white' }}
+                                style={{ 
+                                  backgroundColor: getCategoryColor(entry.category) || '#64748b', 
+                                  color: 'white',
+                                  border: 'none'
+                                }}
                               >
                                 <Tag size={14} /> {entry.category || 'other'}
                               </span>
@@ -527,7 +575,7 @@ const Dashboard = () => {
                   );
                 })()}
               </div>
-            ) : (
+            ) : activeTab === 'analytics' ? (
               <div className="analytics-section">
                 {/* Category Pie Chart with Filter */}
                 {categoryChartData.length > 0 && (
@@ -588,105 +636,111 @@ const Dashboard = () => {
                     </div>
                   </div>
                 )}
-
-                  {/* Inline Editable Lists - Only in Analytics tab */}
-                  <div className="editable-lists-section">
-                    <div className="editable-list-group">
-                      <h3>Categories</h3>
-                      <div className="editable-list">
-                        {categories.map(cat => (
-                          <div key={cat} className="editable-list-item">
-                            {editingItem?.type === 'category' && editingItem.oldValue === cat ? (
-                              <input
-                                type="text"
-                                value={editingItem.newValue}
-                                onChange={(e) => setEditingItem({ ...editingItem, newValue: e.target.value })}
-                                onBlur={async () => {
-                                  if (editingItem.newValue && editingItem.newValue !== editingItem.oldValue) {
-                                    try {
-                                      const entriesToUpdate = entries.filter(e => e.category === editingItem.oldValue);
-                                      await Promise.all(entriesToUpdate.map(e => 
-                                        api.put(`/budget/${e._id || e.id}`, { category: editingItem.newValue })
-                                      ));
-                                      setCategories(categories.map(c => c === editingItem.oldValue ? editingItem.newValue : c));
-                                      toast.success('Category updated');
-                                    } catch (error) {
-                                      toast.error('Failed to update category');
-                                    }
+              </div>
+            ) : activeTab === 'categories' ? (
+              <div className="categories-section">
+                <div className="categories-content">
+                  {/* Edit Categories Section */}
+                  <div className="edit-section">
+                    <h3>Edit Categories</h3>
+                    <div className="editable-list">
+                      {categories.map(cat => (
+                        <div key={cat} className="editable-list-item">
+                          {editingItem?.type === 'category' && editingItem.oldValue === cat ? (
+                            <input
+                              type="text"
+                              value={editingItem.newValue}
+                              onChange={(e) => setEditingItem({ ...editingItem, newValue: e.target.value })}
+                              onBlur={async () => {
+                                if (editingItem.newValue && editingItem.newValue !== editingItem.oldValue) {
+                                  try {
+                                    const entriesToUpdate = entries.filter(e => e.category === editingItem.oldValue);
+                                    await Promise.all(entriesToUpdate.map(e => 
+                                      api.put(`/budget/${e._id || e.id}`, { category: editingItem.newValue })
+                                    ));
+                                    setCategories(categories.map(c => c === editingItem.oldValue ? editingItem.newValue : c));
+                                    toast.success('Category updated');
+                                  } catch (error) {
+                                    toast.error('Failed to update category');
                                   }
-                                  setEditingItem(null);
-                                }}
-                                onKeyPress={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.target.blur();
-                                  }
-                                }}
-                                autoFocus
-                                className="inline-edit-input"
-                              />
-                            ) : (
+                                }
+                                setEditingItem(null);
+                              }}
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.target.blur();
+                                }
+                              }}
+                              autoFocus
+                              className="inline-edit-input"
+                            />
+                          ) : (
+                            <span 
+                              className="editable-text"
+                              onClick={() => setEditingItem({ type: 'category', oldValue: cat, newValue: cat })}
+                            >
                               <span 
-                                className="editable-text"
-                                onClick={() => setEditingItem({ type: 'category', oldValue: cat, newValue: cat })}
-                              >
-                                {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                                className="category-color-indicator"
+                                style={{ backgroundColor: getCategoryColor(cat) }}
+                              />
+                              {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                            </span>
+                          )}
                         </div>
-
-                    <div className="editable-list-group">
-                      <h3>Receivers</h3>
-                      <div className="editable-list">
-                        {receivers.map(rec => (
-                          <div key={rec} className="editable-list-item">
-                            {editingItem?.type === 'receiver' && editingItem.oldValue === rec ? (
-                              <input
-                                type="text"
-                                value={editingItem.newValue}
-                                onChange={(e) => setEditingItem({ ...editingItem, newValue: e.target.value })}
-                                onBlur={async () => {
-                                  if (editingItem.newValue && editingItem.newValue !== editingItem.oldValue) {
-                                    try {
-                                      const entriesToUpdate = entries.filter(e => (e.receiver || e.store) === editingItem.oldValue);
-                                      await Promise.all(entriesToUpdate.map(e => 
-                                        api.put(`/budget/${e._id || e.id}`, { receiver: editingItem.newValue, store: editingItem.newValue })
-                                      ));
-                                      setReceivers(receivers.map(r => r === editingItem.oldValue ? editingItem.newValue : r));
-                                      toast.success('Receiver updated');
-                                      fetchData();
-                                    } catch (error) {
-                                      toast.error('Failed to update receiver');
-                                    }
-                                  }
-                                  setEditingItem(null);
-                                }}
-                                onKeyPress={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.target.blur();
-                                  }
-                                }}
-                                autoFocus
-                                className="inline-edit-input"
-                              />
-                            ) : (
-                              <span 
-                                className="editable-text"
-                                onClick={() => setEditingItem({ type: 'receiver', oldValue: rec, newValue: rec })}
-                              >
-                                {rec}
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                      ))}
                     </div>
+                  </div>
 
+                  {/* Edit Receiver Names Section */}
+                  <div className="edit-section">
+                    <h3>Edit Receiver Names</h3>
+                    <div className="editable-list">
+                      {receivers.map(rec => (
+                        <div key={rec} className="editable-list-item">
+                          {editingItem?.type === 'receiver' && editingItem.oldValue === rec ? (
+                            <input
+                              type="text"
+                              value={editingItem.newValue}
+                              onChange={(e) => setEditingItem({ ...editingItem, newValue: e.target.value })}
+                              onBlur={async () => {
+                                if (editingItem.newValue && editingItem.newValue !== editingItem.oldValue) {
+                                  try {
+                                    const entriesToUpdate = entries.filter(e => (e.receiver || e.store) === editingItem.oldValue);
+                                    await Promise.all(entriesToUpdate.map(e => 
+                                      api.put(`/budget/${e._id || e.id}`, { receiver: editingItem.newValue, store: editingItem.newValue })
+                                    ));
+                                    setReceivers(receivers.map(r => r === editingItem.oldValue ? editingItem.newValue : r));
+                                    toast.success('Receiver updated');
+                                    fetchData();
+                                  } catch (error) {
+                                    toast.error('Failed to update receiver');
+                                  }
+                                }
+                                setEditingItem(null);
+                              }}
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.target.blur();
+                                }
+                              }}
+                              autoFocus
+                              className="inline-edit-input"
+                            />
+                          ) : (
+                            <span 
+                              className="editable-text"
+                              onClick={() => setEditingItem({ type: 'receiver', oldValue: rec, newValue: rec })}
+                            >
+                              {rec}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-            )}
+              </div>
+            ) : null}
           </>
         )}
       </div>
