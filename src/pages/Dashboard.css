@@ -1386,8 +1386,8 @@ td .category-badge[style],
   position: fixed;
   right: 1.5rem;
   bottom: 4.5rem;
-  width: 360px;
-  max-height: 520px;
+  width: 420px;
+  max-height: 600px;
   display: flex;
   flex-direction: column;
   background: var(--bg-secondary);
