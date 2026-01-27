@@ -539,7 +539,7 @@
   font-size: 0.8rem;
   font-weight: 600;
   text-transform: capitalize;
-  background: linear-gradient(135deg, var(--pink-primary) 0%, var(--pink-secondary) 100%);
+  /* Background color is set inline via getCategoryColor() - no default background */
 }
 
 .entry-items {
