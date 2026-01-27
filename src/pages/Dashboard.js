@@ -15,7 +15,7 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts';
-import { getCategoryColor as getCategoryColorUtil, initializeCategoryColorMap, ensureCategoryColors } from '../utils/categoryColors';
+import { getCategoryColor as getCategoryColorUtil, initializeCategoryColorMap, ensureCategoryColors, colorPalette } from '../utils/categoryColors';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -118,7 +118,26 @@ const Dashboard = () => {
       // Merge entry categories with fetched categories
       const allCategories = Array.from(new Set([...fetchedCategories.map(c => c.toLowerCase()), ...Array.from(entryCategories)]));
       if (allCategories.length > 0) {
-        ensureCategoryColors(allCategories, setCategoryColorMap);
+        // Pre-assign colors for all categories immediately
+        setCategoryColorMap(prevMap => {
+          const updatedMap = { ...prevMap };
+          let mapUpdated = false;
+          
+          allCategories.forEach(cat => {
+            if (!updatedMap[cat]) {
+              // Get color from utility (but don't trigger state update in callback)
+              const color = getCategoryColorUtil(cat, updatedMap, null); // Pass null to avoid nested state update
+              updatedMap[cat] = color;
+              mapUpdated = true;
+            }
+          });
+          
+          if (mapUpdated) {
+            localStorage.setItem('categoryColorMap', JSON.stringify(updatedMap));
+            return updatedMap;
+          }
+          return prevMap;
+        });
       }
       
       // Filter entries by category if needed
@@ -239,6 +258,12 @@ const Dashboard = () => {
   // Get category color (wrapper to pass state)
   const getCategoryColor = useCallback((category) => {
     if (!category) return '#64748b';
+    const catLower = (category || 'other').toLowerCase();
+    // Check if we have the color in the map
+    if (categoryColorMap[catLower]) {
+      return categoryColorMap[catLower];
+    }
+    // Otherwise get it from the utility (which will assign and save)
     const color = getCategoryColorUtil(category, categoryColorMap, setCategoryColorMap);
     // Ensure we always return a valid color
     return color || '#64748b'; // Fallback to slate if somehow undefined
@@ -502,25 +527,53 @@ const Dashboard = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredEntries.map((entry) => (
-                          <tr
-                            key={entry._id || entry.id}
-                            className="transaction-row"
-                            onClick={() => openDetails(entry)}
-                          >
-                            <td>{entry.receiver || entry.store || 'Unknown'}</td>
-                            <td>
-                              <span
-                                className="category-badge"
-                                style={{ 
-                                  backgroundColor: getCategoryColor(entry.category) || '#64748b', 
-                                  color: 'white',
-                                  border: 'none'
-                                }}
-                              >
-                                <Tag size={14} /> {entry.category || 'other'}
-                              </span>
-                            </td>
+                          {filteredEntries.map((entry) => {
+                            const cat = entry.category || 'other';
+                            const catLower = cat.toLowerCase();
+                            // Get color directly from map or assign one
+                            let categoryColor = categoryColorMap[catLower];
+                            if (!categoryColor) {
+                              // Find next available color
+                              const usedColors = new Set(Object.values(categoryColorMap));
+                              for (const color of colorPalette) {
+                                if (!usedColors.has(color)) {
+                                  categoryColor = color;
+                                  break;
+                                }
+                              }
+                              if (!categoryColor) {
+                                // Generate random color
+                                const hue = Math.floor(Math.random() * 360);
+                                const saturation = 60 + Math.floor(Math.random() * 30);
+                                const lightness = 45 + Math.floor(Math.random() * 15);
+                                categoryColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+                              }
+                              // Update map immediately
+                              const newMap = { ...categoryColorMap, [catLower]: categoryColor };
+                              setCategoryColorMap(newMap);
+                              localStorage.setItem('categoryColorMap', JSON.stringify(newMap));
+                            }
+                            return (
+                            <tr
+                              key={entry._id || entry.id}
+                              className="transaction-row"
+                              onClick={() => openDetails(entry)}
+                            >
+                              <td>{entry.receiver || entry.store || 'Unknown'}</td>
+                              <td>
+                                <span
+                                  className="category-badge"
+                                  data-category={cat}
+                                  style={{
+                                    backgroundColor: categoryColor,
+                                    background: categoryColor,
+                                    color: 'white',
+                                    border: 'none'
+                                  }}
+                                >
+                                  <Tag size={14} /> {cat}
+                                </span>
+                              </td>
                             <td>
                               <div className="items-list">
                                 {entry.items?.slice(0, 2).map((item, idx) => (
@@ -568,7 +621,8 @@ const Dashboard = () => {
                               </div>
                             </td>
                           </tr>
-                          ))}
+                          );
+                          })}
                         </tbody>
                       </table>
                     </div>

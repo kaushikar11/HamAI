@@ -529,17 +529,26 @@
   border: 1px solid var(--border-color);
 }
 
+/* Category badge - background MUST come from inline style, no CSS default */
 .category-badge {
-  display: inline-flex;
+  display: inline-flex !important;
   align-items: center;
   gap: 5px;
   padding: 6px 14px;
   border-radius: 20px;
-  color: white;
+  color: white !important;
   font-size: 0.8rem;
   font-weight: 600;
   text-transform: capitalize;
-  /* Background color is set inline via getCategoryColor() - no default background */
+  /* NO background or background-color property - inline style will set it */
+  /* Inline styles have highest specificity and will override any CSS */
+}
+
+/* Ensure no other CSS overrides the inline background */
+td .category-badge[style],
+.entries-table .category-badge[style],
+.transaction-row .category-badge[style] {
+  /* Inline styles have highest specificity - they will work */
 }
 
 .entry-items {
@@ -939,16 +948,7 @@
   color: var(--text-secondary);
 }
 
-.category-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  background: rgba(100, 116, 139, 0.15);
-  color: var(--text-primary);
-}
+/* Removed duplicate category-badge definition - using the one at line 532 */
 
 /* Confirm modal */
 .confirm-overlay {
