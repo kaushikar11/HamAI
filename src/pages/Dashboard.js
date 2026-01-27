@@ -53,6 +53,19 @@ const Dashboard = () => {
   const [selectedCategories, setSelectedCategories] = useState(new Set());
   const [categoryColorMap, setCategoryColorMap] = useState(initializeCategoryColorMap);
 
+  // Mr.Ham chatbot state
+  const [mrHamOpen, setMrHamOpen] = useState(false);
+  const [mrHamMessages, setMrHamMessages] = useState([
+    {
+      id: 'mrham-welcome',
+      from: 'mrham',
+      text:
+        "Oink oink! I'm Mr. Ham, your little piggy budget buddy. I only look at the transactions you've saved here and turn them into simple insights. Try asking me things like: \"Which category is eating most of my money?\" or \"How much did I spend on groceries last month?\""
+    }
+  ]);
+  const [mrHamInput, setMrHamInput] = useState('');
+  const [mrHamLoading, setMrHamLoading] = useState(false);
+
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
@@ -276,6 +289,47 @@ const Dashboard = () => {
     if (firebaseName && firebaseName.trim()) return firebaseName;
     return user?.email || 'User';
   })();
+
+  const handleMrHamSend = async (e) => {
+    e?.preventDefault?.();
+    const trimmed = mrHamInput.trim();
+    if (!trimmed) return;
+
+    const userMessage = {
+      id: `user-${Date.now()}`,
+      from: 'user',
+      text: trimmed
+    };
+    setMrHamMessages((prev) => [...prev, userMessage]);
+    setMrHamInput('');
+    setMrHamLoading(true);
+
+    try {
+      const response = await api.post('/budget/chat', { question: trimmed });
+      const answerText =
+        response.data?.answer ||
+        "I'm sorry, I couldn't find an answer about your data. Please try rephrasing your question.";
+
+      const hamMessage = {
+        id: `mrham-${Date.now()}`,
+        from: 'mrham',
+        text: answerText
+      };
+      setMrHamMessages((prev) => [...prev, hamMessage]);
+    } catch (error) {
+      console.error('Mr.Ham chat error:', error);
+      toast.error('Mr. Ham could not answer right now. Please try again in a moment.');
+      const hamMessage = {
+        id: `mrham-error-${Date.now()}`,
+        from: 'mrham',
+        text:
+          "I'm having trouble reaching your data right now. Please check your connection or try again shortly."
+      };
+      setMrHamMessages((prev) => [...prev, hamMessage]);
+    } finally {
+      setMrHamLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -834,6 +888,10 @@ const Dashboard = () => {
         </div>
       )}
 
+      <footer className="app-footer">
+        © {new Date().getFullYear()} Kaushik Alaguvadivel Ramya. All rights reserved.
+      </footer>
+
       {detailsModal.open && detailsModal.tx && (
         <div className="confirm-overlay" role="dialog" aria-modal="true" onClick={closeDetails}>
           <div className="details-modal" onClick={(e) => e.stopPropagation()}>
@@ -890,6 +948,96 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Mr. Ham chatbot */}
+      <button
+        type="button"
+        className="mrham-launcher"
+        onClick={() => setMrHamOpen((prev) => !prev)}
+        aria-label={mrHamOpen ? 'Close Mr. Ham chat' : 'Open Mr. Ham chat'}
+      >
+        <span className="mrham-avatar">
+          <img
+            src="/hamai-logo.png"
+            alt="Mr. Ham"
+            className="mrham-avatar-img"
+            onError={(e) => {
+              e.target.style.display = 'none';
+            }}
+          />
+        </span>
+        <span className="mrham-launcher-text">Mr. Ham</span>
+      </button>
+
+      {mrHamOpen && (
+        <div className="mrham-chat">
+          <div className="mrham-header">
+            <div className="mrham-header-info">
+              <span className="mrham-avatar large">
+                <img
+                  src="/hamai-logo.png"
+                  alt="Mr. Ham"
+                  className="mrham-avatar-img"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                  }}
+                />
+              </span>
+              <div>
+                <div className="mrham-name">Mr. Ham</div>
+                <div className="mrham-subtitle">Your personal budget insights assistant</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="mrham-close"
+              onClick={() => setMrHamOpen(false)}
+              aria-label="Close chat"
+            >
+              ×
+            </button>
+          </div>
+          <div className="mrham-body">
+            {mrHamMessages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`mrham-message ${
+                  msg.from === 'mrham' ? 'mrham-message-assistant' : 'mrham-message-user'
+                }`}
+              >
+                {msg.from === 'mrham' && <span className="mrham-message-label">Mr. Ham</span>}
+                {msg.from === 'user' && <span className="mrham-message-label user">You</span>}
+                <div className="mrham-message-text">{msg.text}</div>
+              </div>
+            ))}
+            {mrHamLoading && (
+              <div className="mrham-message mrham-message-assistant">
+                <span className="mrham-message-label">Mr. Ham</span>
+                <div className="mrham-message-text mrham-typing">
+                  Thinking about your data...
+                </div>
+              </div>
+            )}
+          </div>
+          <form className="mrham-input-bar" onSubmit={handleMrHamSend}>
+            <input
+              type="text"
+              className="mrham-input"
+              placeholder="Ask Mr. Ham about your spending..."
+              value={mrHamInput}
+              onChange={(e) => setMrHamInput(e.target.value)}
+              disabled={mrHamLoading}
+            />
+            <button
+              type="submit"
+              className="mrham-send"
+              disabled={mrHamLoading || !mrHamInput.trim()}
+            >
+              {mrHamLoading ? '...' : 'Ask'}
+            </button>
+          </form>
         </div>
       )}
     </div>

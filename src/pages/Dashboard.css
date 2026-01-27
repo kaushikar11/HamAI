@@ -1327,3 +1327,220 @@ td .category-badge[style],
     grid-template-columns: 1fr;
   }
 }
+
+/* App Footer */
+.app-footer {
+  margin-top: 2rem;
+  padding: 1.5rem 0 0.5rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+/* Mr. Ham Chatbot */
+.mrham-launcher {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, var(--pink-primary) 0%, var(--pink-secondary) 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  z-index: 150;
+}
+
+.mrham-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mrham-avatar.large {
+  width: 32px;
+  height: 32px;
+}
+
+.mrham-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.mrham-launcher-text {
+  white-space: nowrap;
+}
+
+.mrham-chat {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 4.5rem;
+  width: 360px;
+  max-height: 520px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  z-index: 160;
+}
+
+.mrham-header {
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: var(--bg-secondary);
+}
+
+.mrham-header-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.mrham-name {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.mrham-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.mrham-close {
+  border: none;
+  background: var(--bg-tertiary);
+  border-radius: 999px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+
+.mrham-body {
+  padding: 0.75rem 0.9rem;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--bg-primary);
+}
+
+.mrham-message {
+  max-width: 90%;
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.mrham-message-assistant {
+  align-self: flex-start;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.mrham-message-user {
+  align-self: flex-end;
+  background: linear-gradient(135deg, var(--pink-primary) 0%, var(--pink-secondary) 100%);
+  color: white;
+}
+
+.mrham-message-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+  color: var(--text-secondary);
+}
+
+.mrham-message-label.user {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.mrham-message-text {
+  white-space: pre-wrap;
+}
+
+.mrham-typing {
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.mrham-input-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.6rem 0.7rem;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.mrham-input {
+  flex: 1;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.mrham-input:focus {
+  outline: none;
+  border-color: var(--pink-primary);
+  box-shadow: 0 0 0 2px var(--shadow-sm);
+}
+
+.mrham-send {
+  border: none;
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  background: linear-gradient(135deg, var(--pink-primary) 0%, var(--pink-secondary) 100%);
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mrham-send:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .mrham-chat {
+    right: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+    max-height: 60vh;
+  }
+
+  .mrham-launcher {
+    right: 0.75rem;
+    bottom: 0.75rem;
+  }
+}
