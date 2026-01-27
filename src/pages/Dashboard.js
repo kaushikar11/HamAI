@@ -17,6 +17,38 @@ import {
 } from 'recharts';
 import './Dashboard.css';
 
+// Predefined palette of distinct colors (excluding pink as requested)
+const colorPalette = [
+  '#22c55e', // Green
+  '#3b82f6', // Blue
+  '#f97316', // Orange
+  '#0ea5e9', // Sky Blue
+  '#a855f7', // Purple
+  '#14b8a6', // Teal
+  '#ef4444', // Red
+  '#6366f1', // Indigo
+  '#eab308', // Yellow
+  '#10b981', // Emerald
+  '#06b6d4', // Cyan
+  '#8b5cf6', // Violet
+  '#f59e0b', // Amber
+  '#84cc16', // Lime
+  '#64748b', // Slate
+  '#14b8a6', // Turquoise
+  '#f43f5e', // Rose
+  '#0d9488', // Teal Dark
+  '#7c3aed', // Purple Dark
+  '#dc2626', // Red Dark
+  '#059669', // Emerald Dark
+  '#0284c7', // Sky Blue Dark
+  '#c026d3', // Fuchsia
+  '#ea580c', // Orange Dark
+  '#65a30d', // Lime Dark
+  '#0891b2', // Cyan Dark
+  '#9333ea', // Purple Dark
+  '#be123c'  // Rose Dark
+];
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -49,6 +81,23 @@ const Dashboard = () => {
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null });
   const [detailsModal, setDetailsModal] = useState({ open: false, tx: null });
   const [selectedCategories, setSelectedCategories] = useState(new Set());
+  const [categoryColorMap, setCategoryColorMap] = useState(() => {
+    // Load color mapping from localStorage or initialize with defaults
+    const stored = localStorage.getItem('categoryColorMap');
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (e) {
+        console.error('Failed to parse categoryColorMap from localStorage', e);
+      }
+    }
+    // Default 3 categories with 3 default colors
+    return {
+      grocery: '#22c55e',      // Green
+      utilities: '#3b82f6',     // Blue
+      rent: '#f97316'           // Orange
+    };
+  });
 
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -62,6 +111,46 @@ const Dashboard = () => {
   for (let y = minYear; y <= maxYear; y++) {
     years.push(y);
   }
+
+  // Ensure all categories have colors assigned (runs when categories change)
+  useEffect(() => {
+    if (categories.length === 0) return;
+    
+    setCategoryColorMap(prevMap => {
+      const updatedMap = { ...prevMap };
+      let mapUpdated = false;
+      
+      categories.forEach(cat => {
+        const catLower = cat.toLowerCase();
+        if (!updatedMap[catLower]) {
+          // Find next available color
+          const usedColors = new Set(Object.values(updatedMap));
+          for (const color of colorPalette) {
+            if (!usedColors.has(color)) {
+              updatedMap[catLower] = color;
+              mapUpdated = true;
+              break;
+            }
+          }
+          // If all palette colors used, generate random color
+          if (!updatedMap[catLower]) {
+            const hue = Math.floor(Math.random() * 360);
+            const saturation = 60 + Math.floor(Math.random() * 30);
+            const lightness = 45 + Math.floor(Math.random() * 15);
+            updatedMap[catLower] = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+            mapUpdated = true;
+          }
+        }
+      });
+      
+      if (mapUpdated) {
+        localStorage.setItem('categoryColorMap', JSON.stringify(updatedMap));
+        return updatedMap;
+      }
+      
+      return prevMap;
+    });
+  }, [categories]); // Only depend on categories, not categoryColorMap
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -192,21 +281,41 @@ const Dashboard = () => {
     setSelectedCategories(newSelected);
   };
 
-
+  // Get or assign a unique color for a category
   const getCategoryColor = (category) => {
     const c = (category || 'other').toLowerCase();
-    const map = {
-      grocery: '#22c55e',
-      transport: '#0ea5e9',
-      utility: '#3b82f6',
-      restaurant: '#f97316',
-      shopping: '#a855f7',
-      entertainment: '#14b8a6',
-      healthcare: '#ef4444',
-      education: '#6366f1',
-      other: '#64748b'
-    };
-    return map[c] || map.other;
+    
+    // If category already has a color, return it
+    if (categoryColorMap[c]) {
+      return categoryColorMap[c];
+    }
+    
+    // Find the next available color that's not already used
+    const usedColors = new Set(Object.values(categoryColorMap));
+    let newColor = null;
+    
+    for (const color of colorPalette) {
+      if (!usedColors.has(color)) {
+        newColor = color;
+        break;
+      }
+    }
+    
+    // If all colors are used, generate a random color
+    if (!newColor) {
+      // Generate a random color (avoid too light/dark colors)
+      const hue = Math.floor(Math.random() * 360);
+      const saturation = 60 + Math.floor(Math.random() * 30); // 60-90%
+      const lightness = 45 + Math.floor(Math.random() * 15); // 45-60%
+      newColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    }
+    
+    // Assign the new color to this category and save to localStorage
+    const newMap = { ...categoryColorMap, [c]: newColor };
+    setCategoryColorMap(newMap);
+    localStorage.setItem('categoryColorMap', JSON.stringify(newMap));
+    
+    return newColor;
   };
 
   const displayName = (() => {
