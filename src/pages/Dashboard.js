@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useMemo, useCallback } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../utils/axios';
@@ -1009,7 +1010,13 @@ const Dashboard = () => {
               >
                 {msg.from === 'mrham' && <span className="mrham-message-label">Mr. Ham</span>}
                 {msg.from === 'user' && <span className="mrham-message-label user">You</span>}
-                <div className="mrham-message-text">{msg.text}</div>
+                <div className="mrham-message-text">
+                  {msg.from === 'mrham' ? (
+                    <ReactMarkdown>{msg.text}</ReactMarkdown>
+                  ) : (
+                    msg.text
+                  )}
+                </div>
               </div>
             ))}
             {mrHamLoading && (
