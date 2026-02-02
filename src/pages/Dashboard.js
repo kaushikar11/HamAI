@@ -634,83 +634,69 @@ const Dashboard = () => {
             {/* Tab Content */}
             {activeTab === 'table' ? (
               <div className="table-section">
-                <div className="table-header">
-                  <div className="table-title-row">
-                    <h2 className="table-section-title">Transactions</h2>
-                    <div className="search-container">
-                      <Search size={18} className="search-icon" aria-hidden />
-                      <input
-                        type="search"
-                        className="search-input"
-                        placeholder="Search transactions..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        aria-label="Search transactions"
-                      />
-                    </div>
-                    <button
-                      className="table-add-button"
-                      onClick={() => navigate(`/add-entry?month=${selectedMonth}&year=${selectedYear}`)}
-                      type="button"
-                    >
-                      <Plus size={18} aria-hidden /> Add transaction
-                    </button>
+                <div className="table-header table-header-single-row">
+                  <h2 className="table-section-title">Transactions</h2>
+                  <div className="search-container table-search">
+                    <Search size={16} className="search-icon" aria-hidden />
+                    <input
+                      type="search"
+                      className="search-input"
+                      placeholder="Search..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      aria-label="Search transactions"
+                    />
                   </div>
-                  <div className="table-toolbar">
-                    <button
-                      type="button"
-                      className="table-download-excel"
-                      onClick={downloadTableAsExcel}
-                      disabled={tableData.length === 0}
-                      title="Download this month's table as Excel"
-                    >
-                      <Download size={18} aria-hidden /> Download Excel
-                    </button>
-                    <div className="filter-controls">
-                      <label className="filter-label" htmlFor="transaction-sort">
-                        Sort
-                      </label>
-                      <select
-                        id="transaction-sort"
-                        className="filter-select"
-                        value={transactionSort}
-                        onChange={(e) => setTransactionSort(e.target.value)}
-                        aria-label="Sort by transaction amount"
-                      >
-                        <option value="largest">Largest to smallest</option>
-                        <option value="smallest">Smallest to largest</option>
-                      </select>
-                      <label className="filter-label" htmlFor="group-by-select">
-                        <Layers size={16} aria-hidden /> Group by
-                      </label>
-                      <select
-                        id="group-by-select"
-                        className="filter-select"
-                        value={groupBy}
-                        onChange={(e) => setGroupBy(e.target.value)}
-                        aria-label="Group by"
-                      >
-                        <option value="none">None</option>
-                        <option value="category">Category</option>
-                        <option value="receiver">Receiver</option>
-                      </select>
-                      <label className="filter-label" htmlFor="category-filter-select">
-                        <Filter size={18} aria-hidden /> Category
-                      </label>
-                      <select
-                        id="category-filter-select"
-                        className="filter-select"
-                        value={categoryFilter}
-                        onChange={(e) => setCategoryFilter(e.target.value)}
-                        aria-label="Filter by category"
-                      >
-                        <option value="all">All Categories</option>
-                        {categories.map(cat => (
-                          <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+                  <button
+                    className="table-add-button"
+                    onClick={() => navigate(`/add-entry?month=${selectedMonth}&year=${selectedYear}`)}
+                    type="button"
+                  >
+                    <Plus size={16} aria-hidden /> Add
+                  </button>
+                  <button
+                    type="button"
+                    className="table-download-excel"
+                    onClick={downloadTableAsExcel}
+                    disabled={tableData.length === 0}
+                    title="Download this month's table as Excel"
+                  >
+                    <Download size={16} aria-hidden /> Download
+                  </button>
+                  <select
+                    id="transaction-sort"
+                    className="filter-select table-filter-select"
+                    value={transactionSort}
+                    onChange={(e) => setTransactionSort(e.target.value)}
+                    aria-label="Sort by amount"
+                    title="Sort by transaction amount"
+                  >
+                    <option value="largest">Largest first</option>
+                    <option value="smallest">Smallest first</option>
+                  </select>
+                  <select
+                    id="group-by-select"
+                    className="filter-select table-filter-select"
+                    value={groupBy}
+                    onChange={(e) => setGroupBy(e.target.value)}
+                    aria-label="Group by"
+                  >
+                    <option value="none">Group: None</option>
+                    <option value="category">Group: Category</option>
+                    <option value="receiver">Group: Receiver</option>
+                  </select>
+                  <select
+                    id="category-filter-select"
+                    className="filter-select table-filter-select"
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    aria-label="Filter by category"
+                  >
+                    <option value="all">All</option>
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Entries Table */}

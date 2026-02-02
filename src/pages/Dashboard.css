@@ -385,27 +385,13 @@
   font-weight: 700;
 }
 
-.table-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-md);
-  flex-wrap: wrap;
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--border-color);
-}
-
 .table-download-excel {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 8px 14px;
-  border-radius: var(--radius-md);
+  gap: 0.35rem;
   border: 1px solid var(--border-color);
   background: var(--bg-tertiary);
   color: var(--text-primary);
-  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-base);
@@ -808,59 +794,81 @@ td .category-badge[style],
 }
 
 .table-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
-.table-title-row {
+/* Single-row layout for desktop: title, search, add, download, sort, group, category */
+.table-header-single-row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
 }
 
-.table-title-row h2,
 .table-section-title {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   color: var(--text-primary);
+  flex-shrink: 0;
+  margin-right: 0.25rem;
 }
 
-.table-title-row .search-container {
-  flex: 1;
-  min-width: 180px;
-  max-width: 400px;
+.table-search {
+  flex: 0 1 auto;
+  min-width: 100px;
+  max-width: 160px;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.table-search .search-input {
+  font-size: 0.875rem;
 }
 
 .table-add-button {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 10px 16px;
-  border-radius: 8px;
+  gap: 0.35rem;
+  padding: 6px 10px;
+  border-radius: 6px;
   border: none;
   background: linear-gradient(135deg, var(--pink-primary) 0%, var(--pink-secondary) 100%);
   color: white;
-  font-weight: 700;
-  font-size: 0.95rem;
+  font-weight: 600;
+  font-size: 0.85rem;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .table-add-button:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px var(--shadow-sm);
+  box-shadow: 0 4px 12px var(--shadow-sm);
+}
+
+.table-download-excel {
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.table-filter-select {
+  width: auto;
+  min-width: 0;
+  max-width: 115px;
+  padding: 6px 8px;
+  font-size: 0.8rem;
+  flex-shrink: 0;
 }
 
 .search-container {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 10px 14px;
-  border-radius: 8px;
+  gap: 0.4rem;
+  padding: 6px 10px;
+  border-radius: 6px;
   border: 1px solid var(--border-color);
   background: var(--bg-secondary);
 }
@@ -872,10 +880,11 @@ td .category-badge[style],
 
 .search-input {
   flex: 1;
+  min-width: 0;
   border: none;
   background: transparent;
   color: var(--text-primary);
-  font-size: 0.95rem;
+  font-size: 0.875rem;
   outline: none;
 }
 
@@ -1365,56 +1374,37 @@ td .category-badge[style],
     font-size: 0.85rem;
   }
 
-  /* Table section: stack for mobile */
+  /* Table section: wrap for mobile */
   .table-header {
     margin-bottom: 1rem;
   }
 
-  .table-title-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.75rem;
-  }
-
-  .table-title-row .search-container {
-    max-width: none;
-    min-width: 0;
-  }
-
-  .table-add-button {
-    width: 100%;
-    justify-content: center;
-    min-height: 44px;
-  }
-
-  .table-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.75rem;
-    margin-top: 0.5rem;
-    padding-top: 0.75rem;
-  }
-
-  .table-download-excel {
-    width: 100%;
-    justify-content: center;
-    min-height: 44px;
-  }
-
-  .filter-controls {
+  .table-header-single-row {
     flex-wrap: wrap;
     gap: 0.5rem;
   }
 
-  .filter-controls .filter-select {
-    flex: 1;
-    min-width: 120px;
-    min-height: 44px;
+  .table-section-title {
+    width: 100%;
+    font-size: 1.2rem;
   }
 
-  .filter-label {
-    width: 100%;
-    font-size: 0.8rem;
+  .table-search {
+    flex: 1;
+    min-width: 120px;
+    max-width: none;
+  }
+
+  .table-add-button,
+  .table-download-excel {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+
+  .table-filter-select {
+    max-width: none;
+    min-width: 100px;
+    min-height: 44px;
   }
 
   .entries-table-container {
@@ -1487,13 +1477,9 @@ td .category-badge[style],
     font-size: 1.2rem;
   }
 
-  .filter-controls {
-    flex-direction: column;
-  }
-
-  .filter-controls .filter-select {
+  .table-header-single-row .table-filter-select {
     min-width: 0;
-    width: 100%;
+    flex: 1;
   }
 }
 
