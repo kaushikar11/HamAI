@@ -10,6 +10,7 @@ import CompleteProfile from './pages/CompleteProfile';
 import Dashboard from './pages/Dashboard';
 import AddEntry from './pages/AddEntry';
 import ReviewEntry from './pages/ReviewEntry';
+import Profile from './pages/Profile';
 import { setNavigate } from './utils/navigation';
 import './App.css';
 
@@ -54,6 +55,14 @@ function AppRoutes() {
               element={
                 <PrivateRoute>
                   <ReviewEntry />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <PrivateRoute>
+                  <Profile />
                 </PrivateRoute>
               }
             />

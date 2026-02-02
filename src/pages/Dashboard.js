@@ -8,7 +8,7 @@ import { auth } from '../firebase';
 import { 
   Plus, LogOut, DollarSign, Calendar, Tag, Trash2, Edit2, 
   ChevronLeft, ChevronRight, PieChart,
-  Search, TrendingUp, Download
+  Search, TrendingUp, Download, User
 } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 import {
@@ -31,6 +31,7 @@ const Dashboard = () => {
   const defaultMonth = currentMonth; // Current month
   const defaultYear = currentYear; // Current year
   
+  const [viewMode, setViewMode] = useState('month'); // 'month' | 'year' | 'overall'
   const [selectedMonth, setSelectedMonth] = useState(
     parseInt(searchParams.get('month')) || defaultMonth
   );
@@ -52,7 +53,7 @@ const Dashboard = () => {
   const { logout, user } = useContext(AuthContext);
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null });
+  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null, entry: null });
   const [detailsModal, setDetailsModal] = useState({ open: false, tx: null });
   const [selectedCategories, setSelectedCategories] = useState(new Set());
   const [categoryColorMap, setCategoryColorMap] = useState(initializeCategoryColorMap);
@@ -108,65 +109,84 @@ const Dashboard = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch stats and entries for the month
-      const [statsResponse, categoriesResponse, receiversResponse] = await Promise.all([
-        api.get(`/budget/stats/summary?month=${selectedMonth}&year=${selectedYear}`),
+      const [categoriesResponse, receiversResponse] = await Promise.all([
         api.get('/budget/categories'),
         api.get('/budget/receivers')
       ]);
-
-      console.log('Stats response:', statsResponse.data);
-      console.log('Entries count:', statsResponse.data?.entries?.length || 0);
-
-      setStats(statsResponse.data);
       const fetchedCategories = categoriesResponse.data.categories || [];
       const fetchedReceivers = receiversResponse.data.receivers || [];
       setCategories(fetchedCategories);
       setReceivers(fetchedReceivers);
-      
-      // Ensure all categories from entries also have colors
-      const entryCategories = new Set();
-      (statsResponse.data?.entries || []).forEach(entry => {
-        if (entry.category) {
-          entryCategories.add(entry.category.toLowerCase());
-        }
-      });
-      
-      // Merge entry categories with fetched categories
-      const allCategories = Array.from(new Set([...fetchedCategories.map(c => c.toLowerCase()), ...Array.from(entryCategories)]));
-      if (allCategories.length > 0) {
-        // Pre-assign colors for all categories immediately
-        setCategoryColorMap(prevMap => {
-          const updatedMap = { ...prevMap };
-          let mapUpdated = false;
-          
-          allCategories.forEach(cat => {
-            if (!updatedMap[cat]) {
-              // Get color from utility (but don't trigger state update in callback)
-              const color = getCategoryColorUtil(cat, updatedMap, null); // Pass null to avoid nested state update
-              updatedMap[cat] = color;
-              mapUpdated = true;
-            }
-          });
-          
-          if (mapUpdated) {
-            localStorage.setItem('categoryColorMap', JSON.stringify(updatedMap));
-            return updatedMap;
-          }
-          return prevMap;
+
+      if (viewMode === 'month') {
+        const statsResponse = await api.get(`/budget/stats/summary?month=${selectedMonth}&year=${selectedYear}`);
+        const data = statsResponse.data;
+        setStats(data);
+        const rawEntries = data?.entries || [];
+        const entryCategories = new Set();
+        rawEntries.forEach(entry => {
+          if (entry.category) entryCategories.add(entry.category.toLowerCase());
         });
+        const allCategories = Array.from(new Set([...fetchedCategories.map(c => c.toLowerCase()), ...entryCategories]));
+        if (allCategories.length > 0) {
+          setCategoryColorMap(prevMap => {
+            const updatedMap = { ...prevMap };
+            let mapUpdated = false;
+            allCategories.forEach(cat => {
+              if (!updatedMap[cat]) {
+                updatedMap[cat] = getCategoryColorUtil(cat, updatedMap, null);
+                mapUpdated = true;
+              }
+            });
+            if (mapUpdated) localStorage.setItem('categoryColorMap', JSON.stringify(updatedMap));
+            return mapUpdated ? updatedMap : prevMap;
+          });
+        }
+        let filteredEntries = rawEntries;
+        if (categoryFilter && categoryFilter !== 'all') filteredEntries = filteredEntries.filter(e => e.category === categoryFilter);
+        setEntries(filteredEntries);
+      } else {
+        const allResponse = await api.get('/budget?limit=5000');
+        const allEntries = (allResponse.data?.entries || []).map(e => ({
+          ...e,
+          year: e.year || (e.createdAt ? new Date(e.createdAt).getFullYear() : currentYear),
+          month: e.month || (e.createdAt ? new Date(e.createdAt).getMonth() + 1 : 1)
+        }));
+        let scopeEntries = viewMode === 'year' ? allEntries.filter(e => e.year === selectedYear) : allEntries;
+        const totalSpent = scopeEntries.reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+        const categoryTotals = {};
+        scopeEntries.forEach(e => {
+          const cat = (e.category || 'other').toLowerCase();
+          categoryTotals[cat] = (categoryTotals[cat] || 0) + (Number(e.total) || 0);
+        });
+        const scopeCategories = [...new Set(scopeEntries.map(e => (e.category || 'other').toLowerCase()))];
+        setStats({
+          totalSpent,
+          totalEntries: scopeEntries.length,
+          categoryTotals,
+          categories: scopeCategories,
+          entries: scopeEntries
+        });
+        const entryCategories = new Set(scopeEntries.map(e => (e.category || 'other').toLowerCase()));
+        const allCategories = Array.from(new Set([...fetchedCategories.map(c => c.toLowerCase()), ...entryCategories]));
+        if (allCategories.length > 0) {
+          setCategoryColorMap(prevMap => {
+            const updatedMap = { ...prevMap };
+            let mapUpdated = false;
+            allCategories.forEach(cat => {
+              if (!updatedMap[cat]) {
+                updatedMap[cat] = getCategoryColorUtil(cat, updatedMap, null);
+                mapUpdated = true;
+              }
+            });
+            if (mapUpdated) localStorage.setItem('categoryColorMap', JSON.stringify(updatedMap));
+            return mapUpdated ? updatedMap : prevMap;
+          });
+        }
+        let filteredEntries = scopeEntries;
+        if (categoryFilter && categoryFilter !== 'all') filteredEntries = filteredEntries.filter(e => e.category === categoryFilter);
+        setEntries(filteredEntries);
       }
-      
-      // Filter entries by category if needed
-      let filteredEntries = statsResponse.data.entries || [];
-      console.log('Filtered entries before category filter:', filteredEntries.length);
-      
-      if (categoryFilter && categoryFilter !== 'all') {
-        filteredEntries = filteredEntries.filter(e => e.category === categoryFilter);
-      }
-      
-      console.log('Final entries to display:', filteredEntries.length);
-      setEntries(filteredEntries);
     } catch (error) {
       console.error('Failed to load data:', error);
       setStats(null);
@@ -174,15 +194,17 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedMonth, selectedYear, categoryFilter]);
+  }, [viewMode, selectedMonth, selectedYear, categoryFilter]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id, entry = null) => {
     try {
-      await api.delete(`/budget/${id}?month=${selectedMonth}&year=${selectedYear}`);
+      const month = entry?.month ?? selectedMonth;
+      const year = entry?.year ?? selectedYear;
+      await api.delete(`/budget/${id}?month=${month}&year=${year}`);
       toast.success('Transaction deleted');
       fetchData();
     } catch (error) {
@@ -190,15 +212,15 @@ const Dashboard = () => {
     }
   };
 
-  const requestDelete = (id) => {
-    setDeleteConfirm({ open: true, id });
+  const requestDelete = (id, entry = null) => {
+    setDeleteConfirm({ open: true, id, entry });
   };
 
   const confirmDelete = async () => {
     if (!deleteConfirm.id) return;
-    const id = deleteConfirm.id;
-    setDeleteConfirm({ open: false, id: null });
-    await handleDelete(id);
+    const { id, entry } = deleteConfirm;
+    setDeleteConfirm({ open: false, id: null, entry: null });
+    await handleDelete(id, entry);
   };
 
   const openDetails = (tx) => {
@@ -368,7 +390,7 @@ const Dashboard = () => {
               className="table-delete-button"
               onClick={(e) => {
                 e.stopPropagation();
-                requestDelete(entry._id || entry.id);
+                requestDelete(entry._id || entry.id, entry);
               }}
               title="Delete transaction"
             >
@@ -506,63 +528,120 @@ const Dashboard = () => {
             </a>
           </div>
           <div className="nav-actions">
-            <div className="nav-user">
-              Logged in as <strong>{displayName}</strong>
-            </div>
+            <button
+              type="button"
+              className="nav-button nav-user-button"
+              onClick={() => navigate('/profile')}
+              title="Edit profile"
+            >
+              <User size={18} /> <span className="nav-user-name">{displayName}</span>
+            </button>
             <ThemeToggle />
-            <button className="nav-button secondary" onClick={() => setShowLogoutConfirm(true)}>
-              <LogOut size={20} /> Logout
+            <button type="button" className="nav-button nav-logout" onClick={() => setShowLogoutConfirm(true)}>
+              <LogOut size={18} /> Logout
             </button>
           </div>
         </div>
       </nav>
 
       <div className="dashboard-content">
-        {/* Month/Year Navigation */}
-        <div className="month-navigation">
-          <button 
-            className="month-nav-button"
-            onClick={() => changeMonth(-1)}
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <div className="month-display">
-            <h2>{months[selectedMonth - 1]} {selectedYear}</h2>
-            <p className="month-subtitle">Viewing transactions for this month</p>
-          </div>
-          <button 
-            className="month-nav-button"
-            onClick={() => changeMonth(1)}
-          >
-            <ChevronRight size={20} />
-          </button>
-          <div className="month-jump-container">
-            <select
-              className="month-jump-select"
-              value={`${selectedMonth}-${selectedYear}`}
-              onChange={(e) => {
-                const [month, year] = e.target.value.split('-').map(Number);
-                setSelectedMonth(month);
-                setSelectedYear(year);
-                setSearchParams({ month, year });
-              }}
+        {/* View mode + Month/Year Navigation */}
+        <div className="view-mode-bar">
+          <div className="view-mode-tabs">
+            <button
+              type="button"
+              className={`view-mode-tab ${viewMode === 'month' ? 'active' : ''}`}
+              onClick={() => setViewMode('month')}
             >
-              {years.map(y => 
-                months.map((m, idx) => (
-                  <option key={`${idx + 1}-${y}`} value={`${idx + 1}-${y}`}>
-                    {m} {y}
-                  </option>
-                ))
-              )}
-            </select>
+              Month
+            </button>
+            <button
+              type="button"
+              className={`view-mode-tab ${viewMode === 'year' ? 'active' : ''}`}
+              onClick={() => setViewMode('year')}
+            >
+              Year
+            </button>
+            <button
+              type="button"
+              className={`view-mode-tab ${viewMode === 'overall' ? 'active' : ''}`}
+              onClick={() => setViewMode('overall')}
+            >
+              Overall
+            </button>
           </div>
+          {viewMode === 'month' && (
+            <div className="month-navigation">
+              <button type="button" className="month-nav-button" onClick={() => changeMonth(-1)}>
+                <ChevronLeft size={20} />
+              </button>
+              <div className="month-display">
+                <h2>{months[selectedMonth - 1]} {selectedYear}</h2>
+                <p className="month-subtitle">Viewing this month</p>
+              </div>
+              <button type="button" className="month-nav-button" onClick={() => changeMonth(1)}>
+                <ChevronRight size={20} />
+              </button>
+              <select
+                className="month-jump-select"
+                value={`${selectedMonth}-${selectedYear}`}
+                onChange={(e) => {
+                  const [month, year] = e.target.value.split('-').map(Number);
+                  setSelectedMonth(month);
+                  setSelectedYear(year);
+                  setSearchParams({ month, year });
+                }}
+              >
+                {years.map(y =>
+                  months.map((m, idx) => (
+                    <option key={`${idx + 1}-${y}`} value={`${idx + 1}-${y}`}>
+                      {m} {y}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+          )}
+          {viewMode === 'year' && (
+            <div className="year-navigation">
+              <button type="button" className="month-nav-button" onClick={() => setSelectedYear((y) => y - 1)}>
+                <ChevronLeft size={20} />
+              </button>
+              <div className="month-display">
+                <h2>{selectedYear}</h2>
+                <p className="month-subtitle">Viewing full year</p>
+              </div>
+              <button type="button" className="month-nav-button" onClick={() => setSelectedYear((y) => y + 1)}>
+                <ChevronRight size={20} />
+              </button>
+              <select
+                className="month-jump-select"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
+              >
+                {years.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {viewMode === 'overall' && (
+            <div className="overall-display">
+              <h2>All time</h2>
+              <p className="month-subtitle">All your transactions</p>
+            </div>
+          )}
         </div>
 
         {!stats ? (
           <div className="empty-state">
-            <p>No data for {months[selectedMonth - 1]} {selectedYear}</p>
-            <button className="primary-button" onClick={() => navigate(`/add-entry?month=${selectedMonth}&year=${selectedYear}`)}>
-              <Plus size={20} /> Add transaction for this month
+            <p>
+              {viewMode === 'month' && `No data for ${months[selectedMonth - 1]} ${selectedYear}`}
+              {viewMode === 'year' && `No data for ${selectedYear}`}
+              {viewMode === 'overall' && 'No transactions yet'}
+            </p>
+            <button type="button" className="primary-button" onClick={() => navigate(`/add-entry?month=${selectedMonth}&year=${selectedYear}`)}>
+              <Plus size={20} /> Add transaction
             </button>
           </div>
         ) : (
@@ -949,7 +1028,7 @@ const Dashboard = () => {
             <h3>Delete this transaction?</h3>
             <p>This action can’t be undone.</p>
             <div className="confirm-actions">
-              <button className="confirm-secondary" onClick={() => setDeleteConfirm({ open: false, id: null })} type="button">
+              <button className="confirm-secondary" onClick={() => setDeleteConfirm({ open: false, id: null, entry: null })} type="button">
                 Cancel
               </button>
               <button className="confirm-danger" onClick={confirmDelete} type="button">
@@ -1094,7 +1173,7 @@ const Dashboard = () => {
               <div className="mrham-message mrham-message-assistant">
                 <span className="mrham-message-label">Mr. Ham</span>
                 <div className="mrham-message-text mrham-typing">
-                  Thinking about your data...
+                  Thinking...
                 </div>
               </div>
             )}
