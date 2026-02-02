@@ -8,7 +8,7 @@ import { auth } from '../firebase';
 import { 
   Plus, LogOut, DollarSign, Calendar, Tag, Trash2, Edit2, 
   ChevronLeft, ChevronRight, Filter, PieChart,
-  Search, TrendingUp, Download, ArrowUpDown, Layers
+  Search, TrendingUp, Download, Layers
 } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 import {
@@ -43,8 +43,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('total'); // 'total' | 'receiver' | 'category' | 'date'
-  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
+  const [transactionSort, setTransactionSort] = useState('largest'); // 'largest' | 'smallest'
   const [groupBy, setGroupBy] = useState('none'); // 'none' | 'category' | 'receiver'
   const [categories, setCategories] = useState([]);
   const [receivers, setReceivers] = useState([]);
@@ -259,28 +258,13 @@ const Dashboard = () => {
         return receiverMatch || categoryMatch || itemsMatch || notesMatch || amountMatch;
       });
     }
-    const getSortValue = (entry) => {
-      switch (sortBy) {
-        case 'total':
-          return Number(entry.total) || 0;
-        case 'receiver':
-          return (entry.receiver || entry.store || '').toLowerCase();
-        case 'category':
-          return (entry.category || 'other').toLowerCase();
-        case 'date':
-          return new Date(entry.createdAt || 0).getTime();
-        default:
-          return 0;
-      }
-    };
     const sorted = [...list].sort((a, b) => {
-      const va = getSortValue(a);
-      const vb = getSortValue(b);
-      const cmp = typeof va === 'number' && typeof vb === 'number' ? va - vb : String(va).localeCompare(String(vb));
-      return sortOrder === 'asc' ? cmp : -cmp;
+      const va = Number(a.total) || 0;
+      const vb = Number(b.total) || 0;
+      return transactionSort === 'largest' ? vb - va : va - vb;
     });
     return sorted;
-  }, [entries, categoryFilter, searchQuery, sortBy, sortOrder]);
+  }, [entries, categoryFilter, searchQuery, transactionSort]);
 
   const downloadTableAsExcel = () => {
     const monthName = months[selectedMonth - 1];
@@ -652,24 +636,25 @@ const Dashboard = () => {
               <div className="table-section">
                 <div className="table-header">
                   <div className="table-title-row">
-                    <h2>Transactions</h2>
+                    <h2 className="table-section-title">Transactions</h2>
+                    <div className="search-container">
+                      <Search size={18} className="search-icon" aria-hidden />
+                      <input
+                        type="search"
+                        className="search-input"
+                        placeholder="Search transactions..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        aria-label="Search transactions"
+                      />
+                    </div>
                     <button
                       className="table-add-button"
                       onClick={() => navigate(`/add-entry?month=${selectedMonth}&year=${selectedYear}`)}
                       type="button"
                     >
-                      <Plus size={18} /> Add transaction
+                      <Plus size={18} aria-hidden /> Add transaction
                     </button>
-                    <div className="search-container">
-                      <Search size={18} className="search-icon" />
-                      <input
-                        type="text"
-                        className="search-input"
-                        placeholder="Search transactions..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                      />
-                    </div>
                   </div>
                   <div className="table-toolbar">
                     <button
@@ -679,32 +664,27 @@ const Dashboard = () => {
                       disabled={tableData.length === 0}
                       title="Download this month's table as Excel"
                     >
-                      <Download size={18} /> Download Excel
+                      <Download size={18} aria-hidden /> Download Excel
                     </button>
                     <div className="filter-controls">
-                      <span className="filter-label"><ArrowUpDown size={16} /> Sort by</span>
+                      <label className="filter-label" htmlFor="transaction-sort">
+                        Sort
+                      </label>
                       <select
+                        id="transaction-sort"
                         className="filter-select"
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        aria-label="Sort by"
+                        value={transactionSort}
+                        onChange={(e) => setTransactionSort(e.target.value)}
+                        aria-label="Sort by transaction amount"
                       >
-                        <option value="total">Total</option>
-                        <option value="receiver">Receiver</option>
-                        <option value="category">Category</option>
-                        <option value="date">Date</option>
+                        <option value="largest">Largest to smallest</option>
+                        <option value="smallest">Smallest to largest</option>
                       </select>
+                      <label className="filter-label" htmlFor="group-by-select">
+                        <Layers size={16} aria-hidden /> Group by
+                      </label>
                       <select
-                        className="filter-select filter-select-order"
-                        value={sortOrder}
-                        onChange={(e) => setSortOrder(e.target.value)}
-                        aria-label="Sort order"
-                      >
-                        <option value="desc">Descending</option>
-                        <option value="asc">Ascending</option>
-                      </select>
-                      <span className="filter-label"><Layers size={16} /> Group by</span>
-                      <select
+                        id="group-by-select"
                         className="filter-select"
                         value={groupBy}
                         onChange={(e) => setGroupBy(e.target.value)}
@@ -714,8 +694,11 @@ const Dashboard = () => {
                         <option value="category">Category</option>
                         <option value="receiver">Receiver</option>
                       </select>
-                      <Filter size={18} />
+                      <label className="filter-label" htmlFor="category-filter-select">
+                        <Filter size={18} aria-hidden /> Category
+                      </label>
                       <select
+                        id="category-filter-select"
                         className="filter-select"
                         value={categoryFilter}
                         onChange={(e) => setCategoryFilter(e.target.value)}
