@@ -7,8 +7,8 @@ import toast from 'react-hot-toast';
 import { auth } from '../firebase';
 import { 
   Plus, LogOut, DollarSign, Calendar, Tag, Trash2, Edit2, 
-  ChevronLeft, ChevronRight, Filter, PieChart,
-  Search, TrendingUp, Download, Layers
+  ChevronLeft, ChevronRight, PieChart,
+  Search, TrendingUp, Download
 } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 import {
