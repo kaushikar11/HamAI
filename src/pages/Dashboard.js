@@ -76,13 +76,14 @@ const Dashboard = () => {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  // Generate years from 2000 to 2100 (or current year if later)
-  const years = [];
-  const minYear = 2000;
-  const maxYear = Math.max(2100, currentYear + 10); // Allow future years too
-  for (let y = minYear; y <= maxYear; y++) {
-    years.push(y);
-  }
+  // Shorter year range so dropdown stays manageable (short and scrollable)
+  const years = useMemo(() => {
+    const min = currentYear - 30;
+    const max = currentYear + 5;
+    const list = [];
+    for (let y = min; y <= max; y++) list.push(y);
+    return list;
+  }, [currentYear]);
 
   // Ensure all categories have colors assigned (runs when categories change)
   useEffect(() => {
@@ -194,7 +195,7 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [viewMode, selectedMonth, selectedYear, categoryFilter]);
+  }, [viewMode, selectedMonth, selectedYear, categoryFilter, currentYear]);
 
   useEffect(() => {
     fetchData();
@@ -583,22 +584,34 @@ const Dashboard = () => {
                 <ChevronRight size={20} />
               </button>
               <select
-                className="month-jump-select"
-                value={`${selectedMonth}-${selectedYear}`}
+                className="month-jump-select month-select short-listbox"
+                value={selectedMonth}
                 onChange={(e) => {
-                  const [month, year] = e.target.value.split('-').map(Number);
+                  const month = parseInt(e.target.value, 10);
                   setSelectedMonth(month);
-                  setSelectedYear(year);
-                  setSearchParams({ month, year });
+                  setSearchParams({ month, year: selectedYear });
                 }}
+                aria-label="Month"
+                size={5}
               >
-                {years.map(y =>
-                  months.map((m, idx) => (
-                    <option key={`${idx + 1}-${y}`} value={`${idx + 1}-${y}`}>
-                      {m} {y}
-                    </option>
-                  ))
-                )}
+                {months.map((m, idx) => (
+                  <option key={idx + 1} value={idx + 1}>{m}</option>
+                ))}
+              </select>
+              <select
+                className="month-jump-select year-select short-listbox"
+                value={selectedYear}
+                onChange={(e) => {
+                  const year = parseInt(e.target.value, 10);
+                  setSelectedYear(year);
+                  setSearchParams({ month: selectedMonth, year });
+                }}
+                aria-label="Year"
+                size={5}
+              >
+                {years.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
               </select>
             </div>
           )}
