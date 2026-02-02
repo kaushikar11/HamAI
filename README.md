@@ -502,6 +502,4 @@ For issues, questions, or contributions, please open an issue on the repository.
 - [React Documentation](https://react.dev/)
 - [React Router Documentation](https://reactrouter.com/)
 
----
-
-**Built with ❤️ for modern budgeting**
+---**Built with ❤️ for modern budgeting**

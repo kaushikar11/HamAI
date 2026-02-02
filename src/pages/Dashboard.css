@@ -385,10 +385,57 @@
   font-weight: 700;
 }
 
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.table-download-excel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.table-download-excel:hover:not(:disabled) {
+  background: var(--pink-primary);
+  color: white;
+  border-color: var(--pink-primary);
+}
+
+.table-download-excel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .filter-controls {
   display: flex;
   gap: var(--spacing-xs);
   align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
 }
 
 .filter-select {
@@ -878,6 +925,15 @@ td .category-badge[style],
 
 .transaction-row:hover {
   background: var(--bg-primary);
+}
+
+.table-group-header td {
+  font-weight: 700;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid var(--border-color);
+  text-transform: capitalize;
 }
 
 .entries-table tbody tr:last-child td {

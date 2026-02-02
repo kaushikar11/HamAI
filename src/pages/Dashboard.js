@@ -8,7 +8,7 @@ import { auth } from '../firebase';
 import { 
   Plus, LogOut, DollarSign, Calendar, Tag, Trash2, Edit2, 
   ChevronLeft, ChevronRight, Filter, PieChart,
-  Search, TrendingUp
+  Search, TrendingUp, Download, ArrowUpDown, Layers
 } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 import {
@@ -17,6 +17,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { getCategoryColor as getCategoryColorUtil, initializeCategoryColorMap, ensureCategoryColors, colorPalette } from '../utils/categoryColors';
+import * as XLSX from 'xlsx';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -42,6 +43,9 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('total'); // 'total' | 'receiver' | 'category' | 'date'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
+  const [groupBy, setGroupBy] = useState('none'); // 'none' | 'category' | 'receiver'
   const [categories, setCategories] = useState([]);
   const [receivers, setReceivers] = useState([]);
   const [editingItem, setEditingItem] = useState(null); // { type: 'category'|'receiver', oldValue: string, newValue: string }
@@ -230,6 +234,166 @@ const Dashboard = () => {
     setSelectedMonth(newMonth);
     setSelectedYear(newYear);
     setSearchParams({ month: newMonth, year: newYear });
+  };
+
+  // Table data: filter by category + search, then sort (used for display and Excel export)
+  const tableData = useMemo(() => {
+    let list = categoryFilter === 'all'
+      ? entries
+      : entries.filter((e) => e.category === categoryFilter);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter((entry) => {
+        const receiverMatch = (entry.receiver || entry.store || '').toLowerCase().includes(q);
+        const categoryMatch = (entry.category || '').toLowerCase().includes(q);
+        const itemsMatch = (entry.items || []).some(
+          (item) =>
+            (item.name || '').toLowerCase().includes(q) ||
+            String(item.amount || '').includes(q)
+        );
+        const notesMatch = (entry.notes || '').toLowerCase().includes(q);
+        const amountMatch =
+          String(entry.subtotal || '').includes(q) ||
+          String(entry.tax || '').includes(q) ||
+          String(entry.total || '').includes(q);
+        return receiverMatch || categoryMatch || itemsMatch || notesMatch || amountMatch;
+      });
+    }
+    const getSortValue = (entry) => {
+      switch (sortBy) {
+        case 'total':
+          return Number(entry.total) || 0;
+        case 'receiver':
+          return (entry.receiver || entry.store || '').toLowerCase();
+        case 'category':
+          return (entry.category || 'other').toLowerCase();
+        case 'date':
+          return new Date(entry.createdAt || 0).getTime();
+        default:
+          return 0;
+      }
+    };
+    const sorted = [...list].sort((a, b) => {
+      const va = getSortValue(a);
+      const vb = getSortValue(b);
+      const cmp = typeof va === 'number' && typeof vb === 'number' ? va - vb : String(va).localeCompare(String(vb));
+      return sortOrder === 'asc' ? cmp : -cmp;
+    });
+    return sorted;
+  }, [entries, categoryFilter, searchQuery, sortBy, sortOrder]);
+
+  const downloadTableAsExcel = () => {
+    const monthName = months[selectedMonth - 1];
+    const year = selectedYear;
+    const rows = [
+      ['Receiver', 'Category', 'Items Summary', 'Subtotal', 'Tax', 'Total', 'Notes'],
+      ...tableData.map((entry) => [
+        entry.receiver || entry.store || 'Unknown',
+        entry.category || 'other',
+        (entry.items || []).map((i) => `${i.name || ''} ($${Number(i.amount || 0).toFixed(2)})`).join('; '),
+        Number(entry.subtotal || 0).toFixed(2),
+        Number(entry.tax || 0).toFixed(2),
+        Number(entry.total || 0).toFixed(2),
+        entry.notes || ''
+      ])
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, `${monthName}_${year}`);
+    XLSX.writeFile(wb, `transactions_${monthName}_${year}.xlsx`);
+    toast.success('Table downloaded as Excel');
+  };
+
+  const renderTableRow = (entry) => {
+    const cat = entry.category || 'other';
+    const catLower = cat.toLowerCase();
+    let categoryColor = categoryColorMap[catLower];
+    if (!categoryColor) {
+      const usedColors = new Set(Object.values(categoryColorMap));
+      for (const color of colorPalette) {
+        if (!usedColors.has(color)) {
+          categoryColor = color;
+          break;
+        }
+      }
+      if (!categoryColor) {
+        const hue = Math.floor(Math.random() * 360);
+        const saturation = 60 + Math.floor(Math.random() * 30);
+        const lightness = 45 + Math.floor(Math.random() * 15);
+        categoryColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+      }
+      const newMap = { ...categoryColorMap, [catLower]: categoryColor };
+      setCategoryColorMap(newMap);
+      localStorage.setItem('categoryColorMap', JSON.stringify(newMap));
+    }
+    return (
+      <tr
+        key={entry._id || entry.id}
+        className="transaction-row"
+        onClick={() => openDetails(entry)}
+      >
+        <td>{entry.receiver || entry.store || 'Unknown'}</td>
+        <td>
+          <span
+            className="category-badge"
+            data-category={cat}
+            style={{
+              backgroundColor: categoryColor,
+              background: categoryColor,
+              color: 'white',
+              border: 'none'
+            }}
+          >
+            <Tag size={14} /> {cat}
+          </span>
+        </td>
+        <td>
+          <div className="items-list">
+            {entry.items?.slice(0, 2).map((item, idx) => (
+              <div key={idx} className="item-tag">
+                {item.name} (${item.amount?.toFixed(2)})
+              </div>
+            ))}
+            {entry.items?.length > 2 && (
+              <div className="item-tag">+{entry.items.length - 2} more</div>
+            )}
+          </div>
+        </td>
+        <td>${entry.subtotal?.toFixed(2) || '0.00'}</td>
+        <td>${entry.tax?.toFixed(2) || '0.00'}</td>
+        <td className="total-cell">${entry.total?.toFixed(2) || '0.00'}</td>
+        <td>
+          <div className="table-actions">
+            <button
+              className="table-edit-button"
+              onClick={(e) => {
+                e.stopPropagation();
+                sessionStorage.setItem('editEntry', JSON.stringify({
+                  ...entry,
+                  id: entry._id || entry.id,
+                  month: entry.month || selectedMonth,
+                  year: entry.year || selectedYear
+                }));
+                navigate(`/add-entry?edit=true&id=${entry._id || entry.id}&month=${selectedMonth}&year=${selectedYear}`);
+              }}
+              title="Edit transaction"
+            >
+              <Edit2 size={16} />
+            </button>
+            <button
+              className="table-delete-button"
+              onClick={(e) => {
+                e.stopPropagation();
+                requestDelete(entry._id || entry.id);
+              }}
+              title="Delete transaction"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
   };
 
   // Prepare chart data
@@ -507,182 +671,120 @@ const Dashboard = () => {
                       />
                     </div>
                   </div>
-                  <div className="filter-controls">
-                    <Filter size={18} />
-                    <select
-                      className="filter-select"
-                      value={categoryFilter}
-                      onChange={(e) => setCategoryFilter(e.target.value)}
+                  <div className="table-toolbar">
+                    <button
+                      type="button"
+                      className="table-download-excel"
+                      onClick={downloadTableAsExcel}
+                      disabled={tableData.length === 0}
+                      title="Download this month's table as Excel"
                     >
-                      <option value="all">All Categories</option>
-                      {categories.map(cat => (
-                        <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
-                      ))}
-                    </select>
+                      <Download size={18} /> Download Excel
+                    </button>
+                    <div className="filter-controls">
+                      <span className="filter-label"><ArrowUpDown size={16} /> Sort by</span>
+                      <select
+                        className="filter-select"
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        aria-label="Sort by"
+                      >
+                        <option value="total">Total</option>
+                        <option value="receiver">Receiver</option>
+                        <option value="category">Category</option>
+                        <option value="date">Date</option>
+                      </select>
+                      <select
+                        className="filter-select filter-select-order"
+                        value={sortOrder}
+                        onChange={(e) => setSortOrder(e.target.value)}
+                        aria-label="Sort order"
+                      >
+                        <option value="desc">Descending</option>
+                        <option value="asc">Ascending</option>
+                      </select>
+                      <span className="filter-label"><Layers size={16} /> Group by</span>
+                      <select
+                        className="filter-select"
+                        value={groupBy}
+                        onChange={(e) => setGroupBy(e.target.value)}
+                        aria-label="Group by"
+                      >
+                        <option value="none">None</option>
+                        <option value="category">Category</option>
+                        <option value="receiver">Receiver</option>
+                      </select>
+                      <Filter size={18} />
+                      <select
+                        className="filter-select"
+                        value={categoryFilter}
+                        onChange={(e) => setCategoryFilter(e.target.value)}
+                        aria-label="Filter by category"
+                      >
+                        <option value="all">All Categories</option>
+                        {categories.map(cat => (
+                          <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
 
                 {/* Entries Table */}
-                {(() => {
-                  // Filter entries by category
-                  let filteredEntries = categoryFilter === 'all' 
-                    ? entries 
-                    : entries.filter(e => e.category === categoryFilter);
-                  
-                  // Filter by search query (searches all metadata)
-                  if (searchQuery.trim()) {
-                    const query = searchQuery.toLowerCase().trim();
-                    filteredEntries = filteredEntries.filter(entry => {
-                      // Search in receiver/store
-                      const receiverMatch = (entry.receiver || entry.store || '').toLowerCase().includes(query);
-                      // Search in category
-                      const categoryMatch = (entry.category || '').toLowerCase().includes(query);
-                      // Search in items
-                      const itemsMatch = (entry.items || []).some(item => 
-                        (item.name || '').toLowerCase().includes(query) ||
-                        String(item.amount || '').includes(query)
-                      );
-                      // Search in notes
-                      const notesMatch = (entry.notes || '').toLowerCase().includes(query);
-                      // Search in amounts
-                      const amountMatch = 
-                        String(entry.subtotal || '').includes(query) ||
-                        String(entry.tax || '').includes(query) ||
-                        String(entry.total || '').includes(query);
-                      
-                      return receiverMatch || categoryMatch || itemsMatch || notesMatch || amountMatch;
-                    });
-                  }
-                  
-                  if (filteredEntries.length === 0) {
-                    return (
-                      <div className="empty-table-state">
-                        <p>
-                          {categoryFilter === 'all' 
-                            ? `No transactions found for ${months[selectedMonth - 1]} ${selectedYear}`
-                            : `No transactions found in category "${categoryFilter}" for ${months[selectedMonth - 1]} ${selectedYear}`
-                          }
-                        </p>
-                      </div>
-                    );
-                  }
-                  
-                  return (
-                    <div className="entries-table-container">
-                      <table className="entries-table">
-                        <thead>
-                          <tr>
+                {tableData.length === 0 ? (
+                  <div className="empty-table-state">
+                    <p>
+                      {categoryFilter === 'all'
+                        ? `No transactions found for ${months[selectedMonth - 1]} ${selectedYear}`
+                        : `No transactions found in category "${categoryFilter}" for ${months[selectedMonth - 1]} ${selectedYear}`
+                      }
+                    </p>
+                  </div>
+                ) : (
+                  <div className="entries-table-container">
+                    <table className="entries-table">
+                      <thead>
+                        <tr>
                           <th>Receiver</th>
                           <th>Category</th>
-                            <th>Items</th>
-                            <th>Subtotal</th>
-                            <th>Tax</th>
-                            <th>Total</th>
-                            <th>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredEntries.map((entry) => {
-                            const cat = entry.category || 'other';
-                            const catLower = cat.toLowerCase();
-                            // Get color directly from map or assign one
-                            let categoryColor = categoryColorMap[catLower];
-                            if (!categoryColor) {
-                              // Find next available color
-                              const usedColors = new Set(Object.values(categoryColorMap));
-                              for (const color of colorPalette) {
-                                if (!usedColors.has(color)) {
-                                  categoryColor = color;
-                                  break;
-                                }
-                              }
-                              if (!categoryColor) {
-                                // Generate random color
-                                const hue = Math.floor(Math.random() * 360);
-                                const saturation = 60 + Math.floor(Math.random() * 30);
-                                const lightness = 45 + Math.floor(Math.random() * 15);
-                                categoryColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-                              }
-                              // Update map immediately
-                              const newMap = { ...categoryColorMap, [catLower]: categoryColor };
-                              setCategoryColorMap(newMap);
-                              localStorage.setItem('categoryColorMap', JSON.stringify(newMap));
-                            }
-                            return (
-                            <tr
-                              key={entry._id || entry.id}
-                              className="transaction-row"
-                              onClick={() => openDetails(entry)}
-                            >
-                              <td>{entry.receiver || entry.store || 'Unknown'}</td>
-                              <td>
-                                <span
-                                  className="category-badge"
-                                  data-category={cat}
-                                  style={{
-                                    backgroundColor: categoryColor,
-                                    background: categoryColor,
-                                    color: 'white',
-                                    border: 'none'
-                                  }}
-                                >
-                                  <Tag size={14} /> {cat}
-                                </span>
-                              </td>
-                            <td>
-                              <div className="items-list">
-                                {entry.items?.slice(0, 2).map((item, idx) => (
-                                  <div key={idx} className="item-tag">
-                                    {item.name} (${item.amount?.toFixed(2)})
-                                  </div>
-                                ))}
-                                {entry.items?.length > 2 && (
-                                  <div className="item-tag">+{entry.items.length - 2} more</div>
-                                )}
-                              </div>
-                            </td>
-                            <td>${entry.subtotal?.toFixed(2) || '0.00'}</td>
-                            <td>${entry.tax?.toFixed(2) || '0.00'}</td>
-                            <td className="total-cell">${entry.total?.toFixed(2) || '0.00'}</td>
-                            <td>
-                              <div className="table-actions">
-                                <button
-                                  className="table-edit-button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    // Store entry data and navigate to add-entry page
-                                    sessionStorage.setItem('editEntry', JSON.stringify({
-                                      ...entry,
-                                      id: entry._id || entry.id,
-                                      month: entry.month || selectedMonth,
-                                      year: entry.year || selectedYear
-                                    }));
-                                    navigate(`/add-entry?edit=true&id=${entry._id || entry.id}&month=${selectedMonth}&year=${selectedYear}`);
-                                  }}
-                                  title="Edit transaction"
-                                >
-                                  <Edit2 size={16} />
-                                </button>
-                                <button
-                                  className="table-delete-button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    requestDelete(entry._id || entry.id);
-                                  }}
-                                  title="Delete transaction"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                          );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  );
-                })()}
+                          <th>Items</th>
+                          <th>Subtotal</th>
+                          <th>Tax</th>
+                          <th>Total</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {groupBy === 'none'
+                          ? tableData.map((entry) => renderTableRow(entry))
+                          : (() => {
+                              const keyFn = groupBy === 'category'
+                                ? (e) => (e.category || 'other').toLowerCase()
+                                : (e) => (e.receiver || e.store || 'Unknown').toLowerCase();
+                              const groups = new Map();
+                              tableData.forEach((entry) => {
+                                const key = keyFn(entry);
+                                if (!groups.has(key)) groups.set(key, []);
+                                groups.get(key).push(entry);
+                              });
+                              const sortedKeys = [...groups.keys()].sort((a, b) => a.localeCompare(b));
+                              const rows = [];
+                              sortedKeys.forEach((key) => {
+                                rows.push(
+                                  <tr key={`group-${key}`} className="table-group-header">
+                                    <td colSpan={7}>
+                                      {groupBy === 'category' ? key.charAt(0).toUpperCase() + key.slice(1) : key}
+                                    </td>
+                                  </tr>
+                                );
+                                groups.get(key).forEach((entry) => rows.push(renderTableRow(entry)));
+                              });
+                              return rows;
+                            })()}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             ) : activeTab === 'analytics' ? (
               <div className="analytics-section">
