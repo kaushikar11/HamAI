@@ -1365,6 +1365,84 @@ td .category-badge[style],
   border-color: var(--pink-primary);
 }
 
+/* Custom month dropdown: closed by default, opens on click with short scrollable list */
+.month-dropdown-wrapper {
+  position: relative;
+}
+
+.month-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 160px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 2px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  text-align: left;
+}
+
+.month-dropdown-trigger:hover {
+  border-color: var(--pink-primary);
+}
+
+.month-dropdown-trigger:focus {
+  outline: none;
+  border-color: var(--pink-primary);
+  box-shadow: 0 0 0 2px rgba(236, 72, 153, 0.2);
+}
+
+.month-dropdown-chevron-open {
+  transform: rotate(180deg);
+  transition: transform 0.2s;
+}
+
+.month-dropdown-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: transparent;
+}
+
+.month-dropdown-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  border: 1px solid var(--border-color);
+  border-radius: 2px;
+  background: var(--bg-secondary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-height: 220px;
+  overflow-y: auto;
+  min-width: 160px;
+}
+
+.month-dropdown-option {
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: background 0.1s;
+}
+
+.month-dropdown-option:hover,
+.month-dropdown-option.selected {
+  background: var(--pink-primary);
+  color: white;
+}
+
 /* ========== Mobile-friendly: full page ========== */
 @media (max-width: 768px) {
   .dashboard {
@@ -1429,7 +1507,8 @@ td .category-badge[style],
     font-size: 1.4rem;
   }
 
-  .month-jump-select {
+  .month-jump-select,
+  .month-dropdown-trigger {
     min-height: 44px;
     padding: 8px 12px;
     font-size: 0.9rem;

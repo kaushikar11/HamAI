@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import { auth } from '../firebase';
 import { 
   Plus, LogOut, DollarSign, Calendar, Tag, Trash2, Edit2, 
-  ChevronLeft, ChevronRight, PieChart,
+  ChevronLeft, ChevronRight, ChevronDown, PieChart,
   Search, TrendingUp, Download, User
 } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
@@ -53,6 +53,7 @@ const Dashboard = () => {
   const { logout, user } = useContext(AuthContext);
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [monthDropdownOpen, setMonthDropdownOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null, entry: null });
   const [detailsModal, setDetailsModal] = useState({ open: false, tx: null });
   const [selectedCategories, setSelectedCategories] = useState(new Set());
@@ -231,6 +232,11 @@ const Dashboard = () => {
       setSearchParams({ month: currentMonth, year: currentYear });
     }
   }, [viewMode, selectedMonth, selectedYear, currentMonth, currentYear, last10Months, setSearchParams]);
+
+  // Close month dropdown when leaving month view
+  useEffect(() => {
+    if (viewMode !== 'month') setMonthDropdownOpen(false);
+  }, [viewMode]);
 
   const handleDelete = async (id, entry = null) => {
     try {
@@ -625,22 +631,51 @@ const Dashboard = () => {
               <button type="button" className="month-nav-button" onClick={() => changeMonth(1)}>
                 <ChevronRight size={20} />
               </button>
-              <select
-                className="month-jump-select month-select short-listbox"
-                value={`${selectedYear}-${selectedMonth}`}
-                onChange={(e) => {
-                  const [y, m] = e.target.value.split('-').map(Number);
-                  setSelectedYear(y);
-                  setSelectedMonth(m);
-                  setSearchParams({ month: m, year: y });
-                }}
-                aria-label="Month"
-                size={5}
-              >
-                {last10Months.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+              <div className="month-dropdown-wrapper">
+                <button
+                  type="button"
+                  className="month-jump-select month-dropdown-trigger"
+                  onClick={() => setMonthDropdownOpen((o) => !o)}
+                  aria-expanded={monthDropdownOpen}
+                  aria-haspopup="listbox"
+                  aria-label="Select month"
+                >
+                  <span>{months[selectedMonth - 1]} {selectedYear}</span>
+                  <ChevronDown size={18} className={monthDropdownOpen ? 'month-dropdown-chevron-open' : ''} />
+                </button>
+                {monthDropdownOpen && (
+                  <>
+                    <div
+                      className="month-dropdown-backdrop"
+                      role="presentation"
+                      onClick={() => setMonthDropdownOpen(false)}
+                      aria-hidden
+                    />
+                    <ul
+                      className="month-dropdown-list"
+                      role="listbox"
+                      aria-label="Month"
+                    >
+                      {last10Months.map((opt) => (
+                        <li
+                          key={opt.value}
+                          role="option"
+                          aria-selected={selectedYear === opt.year && selectedMonth === opt.month}
+                          className={`month-dropdown-option ${selectedYear === opt.year && selectedMonth === opt.month ? 'selected' : ''}`}
+                          onClick={() => {
+                            setSelectedYear(opt.year);
+                            setSelectedMonth(opt.month);
+                            setSearchParams({ month: opt.month, year: opt.year });
+                            setMonthDropdownOpen(false);
+                          }}
+                        >
+                          {opt.label}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
             </div>
           )}
           {viewMode === 'year' && (
