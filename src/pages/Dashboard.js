@@ -85,6 +85,26 @@ const Dashboard = () => {
     return list;
   }, [currentYear]);
 
+  // Last 10 months only (including current), no future months — for month-view dropdown
+  const last10Months = useMemo(() => {
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    const list = [];
+    let y = currentYear;
+    let m = currentMonth;
+    for (let i = 0; i < 10; i++) {
+      list.push({ year: y, month: m, label: `${monthNames[m - 1]} ${y}`, value: `${y}-${m}` });
+      m--;
+      if (m < 1) {
+        m = 12;
+        y--;
+      }
+    }
+    return list;
+  }, [currentYear, currentMonth]);
+
   // Ensure all categories have colors assigned (runs when categories change)
   useEffect(() => {
     ensureCategoryColors(categories, setCategoryColorMap);
@@ -201,6 +221,17 @@ const Dashboard = () => {
     fetchData();
   }, [fetchData]);
 
+  // In month view, if selected month is not in the last 10 (e.g. old URL), clamp to current month
+  useEffect(() => {
+    if (viewMode !== 'month') return;
+    const inList = last10Months.some((o) => o.year === selectedYear && o.month === selectedMonth);
+    if (!inList) {
+      setSelectedMonth(currentMonth);
+      setSelectedYear(currentYear);
+      setSearchParams({ month: currentMonth, year: currentYear });
+    }
+  }, [viewMode, selectedMonth, selectedYear, currentMonth, currentYear, last10Months, setSearchParams]);
+
   const handleDelete = async (id, entry = null) => {
     try {
       const month = entry?.month ?? selectedMonth;
@@ -290,8 +321,19 @@ const Dashboard = () => {
   }, [entries, categoryFilter, searchQuery, transactionSort]);
 
   const downloadTableAsExcel = () => {
-    const monthName = months[selectedMonth - 1];
-    const year = selectedYear;
+    let sheetName;
+    let fileName;
+    if (viewMode === 'month') {
+      const monthName = months[selectedMonth - 1];
+      sheetName = `${monthName}_${selectedYear}`;
+      fileName = `transactions_${monthName}_${selectedYear}.xlsx`;
+    } else if (viewMode === 'year') {
+      sheetName = String(selectedYear);
+      fileName = `transactions_${selectedYear}.xlsx`;
+    } else {
+      sheetName = 'all';
+      fileName = 'transactions_all.xlsx';
+    }
     const rows = [
       ['Receiver', 'Category', 'Items Summary', 'Subtotal', 'Tax', 'Total', 'Notes'],
       ...tableData.map((entry) => [
@@ -306,8 +348,8 @@ const Dashboard = () => {
     ];
     const ws = XLSX.utils.aoa_to_sheet(rows);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, `${monthName}_${year}`);
-    XLSX.writeFile(wb, `transactions_${monthName}_${year}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName.length > 31 ? sheetName.slice(0, 31) : sheetName);
+    XLSX.writeFile(wb, fileName);
     toast.success('Table downloaded as Excel');
   };
 
@@ -585,32 +627,18 @@ const Dashboard = () => {
               </button>
               <select
                 className="month-jump-select month-select short-listbox"
-                value={selectedMonth}
+                value={`${selectedYear}-${selectedMonth}`}
                 onChange={(e) => {
-                  const month = parseInt(e.target.value, 10);
-                  setSelectedMonth(month);
-                  setSearchParams({ month, year: selectedYear });
+                  const [y, m] = e.target.value.split('-').map(Number);
+                  setSelectedYear(y);
+                  setSelectedMonth(m);
+                  setSearchParams({ month: m, year: y });
                 }}
                 aria-label="Month"
                 size={5}
               >
-                {months.map((m, idx) => (
-                  <option key={idx + 1} value={idx + 1}>{m}</option>
-                ))}
-              </select>
-              <select
-                className="month-jump-select year-select short-listbox"
-                value={selectedYear}
-                onChange={(e) => {
-                  const year = parseInt(e.target.value, 10);
-                  setSelectedYear(year);
-                  setSearchParams({ month: selectedMonth, year });
-                }}
-                aria-label="Year"
-                size={5}
-              >
-                {years.map((y) => (
-                  <option key={y} value={y}>{y}</option>
+                {last10Months.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
             </div>
