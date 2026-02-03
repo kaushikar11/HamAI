@@ -54,6 +54,7 @@ const Dashboard = () => {
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [monthDropdownOpen, setMonthDropdownOpen] = useState(false);
+  const [earliestRecordedMonth, setEarliestRecordedMonth] = useState(null); // { year, month } | null
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null, entry: null });
   const [detailsModal, setDetailsModal] = useState({ open: false, tx: null });
   const [selectedCategories, setSelectedCategories] = useState(new Set());
@@ -86,8 +87,8 @@ const Dashboard = () => {
     return list;
   }, [currentYear]);
 
-  // Last 10 months only (including current), no future months — for month-view dropdown
-  const last10Months = useMemo(() => {
+  // Months from current back to first recorded month (no future), scrollable list — for month-view dropdown
+  const selectableMonths = useMemo(() => {
     const monthNames = [
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'
@@ -95,16 +96,21 @@ const Dashboard = () => {
     const list = [];
     let y = currentYear;
     let m = currentMonth;
-    for (let i = 0; i < 10; i++) {
+    const endYear = earliestRecordedMonth?.year;
+    const endMonth = earliestRecordedMonth?.month;
+    while (true) {
       list.push({ year: y, month: m, label: `${monthNames[m - 1]} ${y}`, value: `${y}-${m}` });
+      if (endYear != null && endMonth != null && y === endYear && m === endMonth) break;
+      if (earliestRecordedMonth == null && list.length >= 12) break; // no data yet: show 12 months
       m--;
       if (m < 1) {
         m = 12;
         y--;
       }
+      if (list.length > 500) break; // safety cap
     }
     return list;
-  }, [currentYear, currentMonth]);
+  }, [currentYear, currentMonth, earliestRecordedMonth]);
 
   // Ensure all categories have colors assigned (runs when categories change)
   useEffect(() => {
@@ -174,6 +180,16 @@ const Dashboard = () => {
           year: e.year || (e.createdAt ? new Date(e.createdAt).getFullYear() : currentYear),
           month: e.month || (e.createdAt ? new Date(e.createdAt).getMonth() + 1 : 1)
         }));
+        if (allEntries.length > 0) {
+          const minY = Math.min(...allEntries.map((e) => e.year));
+          const minMonthEntries = allEntries.filter((e) => e.year === minY);
+          const minM = Math.min(...minMonthEntries.map((e) => e.month));
+          setEarliestRecordedMonth((prev) => {
+            if (!prev) return { year: minY, month: minM };
+            if (minY < prev.year || (minY === prev.year && minM < prev.month)) return { year: minY, month: minM };
+            return prev;
+          });
+        }
         let scopeEntries = viewMode === 'year' ? allEntries.filter(e => e.year === selectedYear) : allEntries;
         const totalSpent = scopeEntries.reduce((sum, e) => sum + (Number(e.total) || 0), 0);
         const categoryTotals = {};
@@ -222,21 +238,42 @@ const Dashboard = () => {
     fetchData();
   }, [fetchData]);
 
-  // In month view, if selected month is not in the last 10 (e.g. old URL), clamp to current month
+  // In month view, if selected month is in the future, clamp to current month
   useEffect(() => {
     if (viewMode !== 'month') return;
-    const inList = last10Months.some((o) => o.year === selectedYear && o.month === selectedMonth);
-    if (!inList) {
+    const isFuture = selectedYear > currentYear || (selectedYear === currentYear && selectedMonth > currentMonth);
+    if (isFuture) {
       setSelectedMonth(currentMonth);
       setSelectedYear(currentYear);
       setSearchParams({ month: currentMonth, year: currentYear });
     }
-  }, [viewMode, selectedMonth, selectedYear, currentMonth, currentYear, last10Months, setSearchParams]);
+  }, [viewMode, selectedMonth, selectedYear, currentMonth, currentYear, setSearchParams]);
 
   // Close month dropdown when leaving month view
   useEffect(() => {
     if (viewMode !== 'month') setMonthDropdownOpen(false);
   }, [viewMode]);
+
+  // When in month view only, fetch all entries once to get earliest recorded month
+  useEffect(() => {
+    if (viewMode !== 'month' || earliestRecordedMonth != null) return;
+    let cancelled = false;
+    api.get('/budget?limit=5000')
+      .then((res) => {
+        if (cancelled) return;
+        const entries = res.data?.entries || [];
+        if (entries.length === 0) return;
+        const withYM = entries.map((e) => ({
+          year: e.year || (e.createdAt ? new Date(e.createdAt).getFullYear() : new Date().getFullYear()),
+          month: e.month || (e.createdAt ? new Date(e.createdAt).getMonth() + 1 : 1)
+        }));
+        const minY = Math.min(...withYM.map((e) => e.year));
+        const minM = Math.min(...withYM.filter((e) => e.year === minY).map((e) => e.month));
+        setEarliestRecordedMonth({ year: minY, month: minM });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [viewMode, earliestRecordedMonth]);
 
   const handleDelete = async (id, entry = null) => {
     try {
@@ -656,7 +693,7 @@ const Dashboard = () => {
                       role="listbox"
                       aria-label="Month"
                     >
-                      {last10Months.map((opt) => (
+                      {selectableMonths.map((opt) => (
                         <li
                           key={opt.value}
                           role="option"
